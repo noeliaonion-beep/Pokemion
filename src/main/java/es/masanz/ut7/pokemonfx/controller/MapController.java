@@ -11,6 +11,7 @@ import javafx.animation.KeyFrame;
 import javafx.animation.KeyValue;
 import javafx.animation.Timeline;
 import javafx.application.Platform;
+import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
@@ -20,6 +21,7 @@ import javafx.scene.image.PixelReader;
 import javafx.scene.image.PixelWriter;
 import javafx.scene.image.WritableImage;
 import javafx.scene.input.KeyCode;
+import javafx.scene.layout.HBox;
 import javafx.scene.layout.StackPane;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
@@ -65,12 +67,6 @@ public class MapController {
         collisionMap = new int[MapManager.mapHeight][MapManager.mapWidth];
         teleportMap = new String[MapManager.mapHeight][MapManager.mapWidth];
         eventsMap = new Evento[MapManager.mapHeight][MapManager.mapWidth];
-
-        //playerX = MapManager.mapWidth / 2 * TILE_SIZE;
-        //playerY = MapManager.mapHeight / 2 * TILE_SIZE;
-
-        //playerX = MapManager.inicioX;
-        //playerY = MapManager.inicioY;
 
         playerX = MapManager.inicioX;
         playerY = MapManager.inicioY;
@@ -138,20 +134,31 @@ public class MapController {
         };
         gameLoop.start();
 
-        Button actionButton = new Button("Gestionar nuestros Pokemon");
-        actionButton.setOnAction(e -> {
+        // MENÚ DE BOTONES
+        HBox topMenu = new HBox(10);
+        topMenu.setPadding(new javafx.geometry.Insets(10));
+        topMenu.setAlignment(Pos.TOP_LEFT);
+        topMenu.setPickOnBounds(false);
+        
+        Button pcButton = new Button("Gestionar Pokémon");
+        pcButton.setOnAction(e -> {
             PokePCController pcC = new PokePCController();
             pcC.load(primaryStage, mainStage.getScene());
         });
-        actionButton.setTranslateX(-(VIEW_WIDTH/2) + 100);
-        actionButton.setTranslateY(-(VIEW_HEIGHT/2) + 25);
-        root.getChildren().add(actionButton);
+
+        Button bagButton = new Button("Bolsa");
+        bagButton.setOnAction(e -> {
+            BolsaController bc = new BolsaController();
+            bc.load(primaryStage, mainStage.getScene(), null);
+        });
+
+        topMenu.getChildren().addAll(pcButton, bagButton);
+        root.getChildren().add(topMenu);
 
         primaryStage.setTitle("Ruta 1");
         primaryStage.setScene(scene);
         primaryStage.sceneProperty().addListener((obs, oldScene, newScene) -> {
             if (newScene == scene) {
-                System.out.println("¡Hemos vuelto a la escena principal!");
                 iniciandoTransicion = false;
                 blockGame = false;
                 updateNPCList();
@@ -180,7 +187,7 @@ public class MapController {
                 if(eventsMap[y][x]!=null && eventsMap[y][x].imagenDelEvento()!=null){
                     URL resource = MapController.class.getResource(eventsMap[y][x].imagenDelEvento());
                     if(resource!=null){
-                        Image imagen = new Image(MapController.class.getResource(eventsMap[y][x].imagenDelEvento()).toExternalForm());
+                        Image imagen = new Image(resource.toExternalForm());
                         gcTemp.drawImage(imagen, x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
                     }
                 }
@@ -219,7 +226,6 @@ public class MapController {
                 playerY = targetY;
                 moving = false;
 
-                // Verificar si el jugador pisa HIERBA_ALTA y hay un 10% de probabilidad de cambiar de escenario
                 int tileX = (int) (playerX / TILE_SIZE);
                 int tileY = (int) (playerY / TILE_SIZE);
                 if (mapData[tileY][tileX] == TileType.CESPED_HIERBA.ordinal() && Math.random() < PROBABILIDAD_POKEMON_SALVAJE) {
@@ -252,37 +258,28 @@ public class MapController {
             }
         }
 
-        offsetX = playerX - VIEW_WIDTH / 2 + TILE_SIZE / 2;
-        offsetY = playerY - VIEW_HEIGHT / 2 + TILE_SIZE / 2;
+        offsetX = playerX - (double)VIEW_WIDTH / 2 + (double)TILE_SIZE / 2;
+        offsetY = playerY - (double)VIEW_HEIGHT / 2 + (double)TILE_SIZE / 2;
     }
 
     public static void cambiarAEscenario(NPC npc) {
-        System.out.println("¡Cambio de escenario! Comenzando batalla pokemon...");
-
         pressedKeys = new HashSet<>();
-
         blockGame = true;
         iniciandoTransicion = true;
-
         Scene escenaActual = mainStage.getScene();
-
         Rectangle overlay = new Rectangle(VIEW_WIDTH, VIEW_HEIGHT, Color.BLACK);
         overlay.setOpacity(0);
         root.getChildren().add(overlay);
-
         Timeline fadeAnimation = new Timeline(
                 new KeyFrame(Duration.seconds(0.1), new KeyValue(overlay.opacityProperty(), 1.0)),
                 new KeyFrame(Duration.seconds(0.3), new KeyValue(overlay.opacityProperty(), 0.0))
         );
-
         fadeAnimation.setCycleCount(3);
-
         fadeAnimation.setOnFinished(event -> {
             blockGame = false;
             root.getChildren().remove(overlay);
             loadBattle(escenaActual, npc);
         });
-
         fadeAnimation.play();
     }
 
@@ -300,24 +297,11 @@ public class MapController {
     private static void moveTo(double x, double y, KeyCode direction) {
         int tileX = (int) (x / TILE_SIZE);
         int tileY = (int) (y / TILE_SIZE);
-
-        if (!moving) {
-            lastDirection = direction;
-        }
-
+        if (!moving) lastDirection = direction;
         if (tileX >= 0 && tileX < MapManager.mapWidth && tileY >= 0 && tileY < MapManager.mapHeight) {
-            // hacer aqui lo del TP?
-            /*
-            if(teleportMap[tileY][tileX]!=null){
-                reload(teleportMap[tileY][tileX]);
-            }
-            */
-
             if (collisionMap[tileY][tileX] != CollisionType.PARED.ordinal()) {
                 for (NPC npc : npcs) {
-                    if(npc.getX()==tileX && npc.getY()==tileY){
-                        return;
-                    }
+                    if(npc.getX()==tileX && npc.getY()==tileY) return;
                 }
                 targetX = x;
                 targetY = y;
@@ -332,7 +316,6 @@ public class MapController {
         gc.setFill(Color.BLACK);
         gc.fillRect(0, 0, VIEW_WIDTH, VIEW_HEIGHT);
         gc.drawImage(preRenderedMap, -offsetX, -offsetY);
-
         drawPlayer(gc, VIEW_WIDTH / 2 - TILE_SIZE / 2, VIEW_HEIGHT / 2 - TILE_SIZE / 2);
         drawNPCs(gc);
     }
@@ -340,29 +323,13 @@ public class MapController {
     private static void drawPlayer(GraphicsContext gc, int x, int y) {
         int frameX = animationFrame;
         int startIn = 0;
-
-        if (lastDirection == KeyCode.W || lastDirection == KeyCode.UP) {
-            frameX = frameX % 3;
-            startIn = 3;
-        }
-        if (lastDirection == KeyCode.S || lastDirection == KeyCode.DOWN) {
-            frameX = frameX % 3;
-            startIn = 0;
-        }
-        if (lastDirection == KeyCode.A || lastDirection == KeyCode.LEFT) {
-            frameX = frameX % 2;
-            startIn = 6;
-        }
-        if (lastDirection == KeyCode.D || lastDirection == KeyCode.RIGHT) {
-            frameX = frameX % 2;
-            startIn = 8;
-        }
-
+        if (lastDirection == KeyCode.W || lastDirection == KeyCode.UP) { frameX = frameX % 3; startIn = 3; }
+        else if (lastDirection == KeyCode.S || lastDirection == KeyCode.DOWN) { frameX = frameX % 3; startIn = 0; }
+        else if (lastDirection == KeyCode.A || lastDirection == KeyCode.LEFT) { frameX = frameX % 2; startIn = 6; }
+        else if (lastDirection == KeyCode.D || lastDirection == KeyCode.RIGHT) { frameX = frameX % 2; startIn = 8; }
         WritableImage playerSprite = new WritableImage(jugadorImage.getPixelReader(), (startIn + frameX) * TILE_SIZE / SCALE_FACTOR, 0, TILE_SIZE / SCALE_FACTOR, TILE_SIZE / SCALE_FACTOR);
-
         PixelReader pixelReader = playerSprite.getPixelReader();
         PixelWriter pixelWriter = playerSprite.getPixelWriter();
-
         for (int i = 0; i < TILE_SIZE / SCALE_FACTOR; i++) {
             for (int j = 0; j < TILE_SIZE / SCALE_FACTOR; j++) {
                 Color color = pixelReader.getColor(i, j);
@@ -387,62 +354,46 @@ public class MapController {
         for (NPC npc : npcs) {
             int npcTileX = npc.getX();
             int npcTileY = npc.getY();
-
             int playerTileX = (int) (playerX / TILE_SIZE);
             int playerTileY = (int) (playerY / TILE_SIZE);
-
             int distanciaDeVision = 3;
-
             int npcMirandoA = npc.getMirandoA();
-
-            if(npcTileX == playerTileX && (npcTileY - playerTileY) <= distanciaDeVision &&
-                    (npcTileY - playerTileY) >= 0 && npcMirandoA==ARRIBA){
+            if(npcTileX == playerTileX && (npcTileY - playerTileY) <= distanciaDeVision && (npcTileY - playerTileY) >= 0 && npcMirandoA==ARRIBA){
                 boolean hayVision = true;
                 for (int i = 0; i < npcTileY - playerTileY; i++) {
                     if (collisionMap[playerTileY + i][playerTileX] == CollisionType.PARED.ordinal()) {
                         hayVision = false;
+                        break;
                     }
                 }
-                if(hayVision) {
-                    blockGame = true;
-                    npc.setActive(true);
-                }
-            } else if(npcTileX == playerTileX && (playerTileY - npcTileY) <= distanciaDeVision &&
-                    (playerTileY - npcTileY) >= 0 && npcMirandoA==ABAJO){
+                if(hayVision) { blockGame = true; npc.setActive(true); }
+            } else if(npcTileX == playerTileX && (playerTileY - npcTileY) <= distanciaDeVision && (playerTileY - npcTileY) >= 0 && npcMirandoA==ABAJO){
                 boolean hayVision = true;
                 for (int i = 0; i < playerTileY - npcTileY; i++) {
                     if (collisionMap[npcTileY + i][npcTileX] == CollisionType.PARED.ordinal()) {
                         hayVision = false;
+                        break;
                     }
                 }
-                if(hayVision) {
-                    blockGame = true;
-                    npc.setActive(true);
-                }
-            } else if(npcTileY == playerTileY && (npcTileX - playerTileX) <= distanciaDeVision &&
-                    (npcTileX - playerTileX) >= 0 && npcMirandoA==IZQUIERDA){
+                if(hayVision) { blockGame = true; npc.setActive(true); }
+            } else if(npcTileY == playerTileY && (npcTileX - playerTileX) <= distanciaDeVision && (npcTileX - playerTileX) >= 0 && npcMirandoA==IZQUIERDA){
                 boolean hayVision = true;
                 for (int i = 0; i < npcTileX - playerTileX; i++) {
                     if (collisionMap[playerTileY][playerTileX + i] == CollisionType.PARED.ordinal()) {
                         hayVision = false;
+                        break;
                     }
                 }
-                if(hayVision) {
-                    blockGame = true;
-                    npc.setActive(true);
-                }
-            } else if(npcTileY == playerTileY && (playerTileX - npcTileX) <= distanciaDeVision &&
-                    (playerTileX - npcTileX) >= 0 && npcMirandoA==DERECHA){
+                if(hayVision) { blockGame = true; npc.setActive(true); }
+            } else if(npcTileY == playerTileY && (playerTileX - npcTileX) <= distanciaDeVision && (playerTileX - npcTileX) >= 0 && npcMirandoA==DERECHA){
                 boolean hayVision = true;
                 for (int i = 0; i < playerTileX - npcTileX; i++) {
-                    if (collisionMap[npcTileY][npcTileX + i] == CollisionType.PARED.ordinal()) {
+                    if (collisionMap[npcTileY][playerTileX - i] == CollisionType.PARED.ordinal()) {
                         hayVision = false;
+                        break;
                     }
                 }
-                if(hayVision) {
-                    blockGame = true;
-                    npc.setActive(true);
-                }
+                if(hayVision) { blockGame = true; npc.setActive(true); }
             }
         }
     }
@@ -452,22 +403,13 @@ public class MapController {
             for (NPC npc : npcs) {
                 if (npc.isActive()) {
                     npc.moveTowards(playerX, playerY);
-                    if (Math.abs(npc.getX() - playerX) < TILE_SIZE && Math.abs(npc.getY() - playerY) < TILE_SIZE) {
-                        cambiarAEscenario(npc);
-                    }
+                    if (Math.abs(npc.getPosX() - playerX) < TILE_SIZE && Math.abs(npc.getPosY() - playerY) < TILE_SIZE) cambiarAEscenario(npc);
                 }
             }
         }
     }
 
     private static void updateNPCList(){
-        Iterator<NPC> iterator = npcs.iterator();
-        while(iterator.hasNext()) {
-            NPC npc = iterator.next();
-            if (npc.isEliminarNPC()) {
-                iterator.remove();
-            }
-        }
+        npcs.removeIf(NPC::isEliminarNPC);
     }
-
 }

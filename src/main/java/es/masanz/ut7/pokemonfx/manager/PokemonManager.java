@@ -1,23 +1,21 @@
 package es.masanz.ut7.pokemonfx.manager;
 
 import es.masanz.ut7.pokemonfx.model.base.Pokemon;
-import es.masanz.ut7.pokemonfx.model.pokemons.Bulbasaur;
-
-import java.util.List;
+import es.masanz.ut7.pokemonfx.model.pokemons.*;
+import java.util.Random;
 
 public class PokemonManager {
 
-    // TODO 03: Hacer que, en vez de devolver un pokemon de la ruta, devuelva un clon de ese pokemon.
-    public static Pokemon generarPokemonSalvaje(String ruta){
-        Pokemon pokemon = null;
-        if(MapManager.mapas.containsKey(ruta)){
-            List<Pokemon> pokemonSalvajes = MapManager.mapas.get(ruta).getPokemonSalvajes();
-            pokemon = pokemonSalvajes.get((int) (Math.random() * pokemonSalvajes.size()));
-        }
-        if(pokemon==null){
-            pokemon = new Bulbasaur(5);
-        }
-        return pokemon;
-    }
+    private static final Random random = new Random();
 
+    public static Pokemon generarPokemonSalvaje(String ruta) {
+        int r = random.nextInt(4);
+        int nivel = random.nextInt(6) + 2;
+        return switch (r) {
+            case 0 -> new Bulbasaur(nivel);
+            case 1 -> new Charmander(nivel);
+            case 2 -> new Squirtle(nivel);
+            default -> new Mimikyu(nivel);
+        };
+    }
 }

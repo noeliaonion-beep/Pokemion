@@ -7,10 +7,12 @@ public class Entrenador {
 
     private List<Pokemon> pokemonesCapturados;
     private Pokemon[] pokemonesCombate;
+    private List<Item> bolsa;
 
     public Entrenador(){
         pokemonesCapturados = new ArrayList<>();
         pokemonesCombate = new Pokemon[6];
+        bolsa=new ArrayList<>();
     }
 
     public void incluirPokemonParaCombatir(int pos, Pokemon pokemon){
@@ -23,6 +25,18 @@ public class Entrenador {
 
     public Pokemon[] getPokemonesCombate() {
         return pokemonesCombate;
+    }
+
+    public List<Item> getBolsa() {
+        return bolsa;
+    }
+    
+    public void anadirItem(Item item) {
+        if (bolsa.contains(item)) {
+            bolsa.get(bolsa.indexOf(item)).setCantidad(bolsa.get(bolsa.indexOf(item)).getCantidad() + 1);
+        } else {
+            bolsa.add(item);
+        }
     }
 
 }

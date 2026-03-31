@@ -2,7 +2,6 @@ package es.masanz.ut7.pokemonfx.model.base;
 
 import es.masanz.ut7.pokemonfx.model.enums.Tipo;
 
-// TODO 13: Extender esta clase para crear vuestros propios ataques
 public class Ataque {
 
     protected String nombre;
@@ -27,13 +26,12 @@ public class Ataque {
 
     public String ejecutarAtaque(Pokemon ejecutor, Pokemon destinatario) {
         StringBuilder sb = new StringBuilder();
-        String nombrePokemonE = ejecutor.getApodo()!=null ? ejecutor.getApodo() : ejecutor.getClass().getSimpleName();
-        sb.append("["+nombrePokemonE+"] usó ["+nombre+"].");
+        sb.append("[").append(ejecutor.getNombre()).append("] usó [").append(nombre).append("].");
         if(cantidad > 0){
             cantidad--;
             if (Math.random() * 100 < precision) {
                 int dano = calcularDano(ejecutor, destinatario, sb);
-                sb.append(" Hace ["+dano+"] puntos de daño.");
+                sb.append(" Hace [").append(dano).append("] puntos de daño.");
                 destinatario.recibirAtaque(ejecutor, dano);
             } else {
                 sb.append(" ¡Pero [FALLO] el ataque!");
@@ -44,99 +42,49 @@ public class Ataque {
         return sb.toString();
     }
 
-    // Formula REAL del juego de POKEMON
     protected int calcularDano(Pokemon ejecutor, Pokemon objetivo, StringBuilder sb) {
         int ataque = esEspecial ? ejecutor.getAtaqueEspecial() : ejecutor.getAtaque();
         int defensa = esEspecial ? objetivo.getDefensaEspecial() : objetivo.getDefensa();
 
         double danioBase = (((2.0 * ejecutor.getNivel() + 10) / 250.0) * (ataque / (double) defensa) * dmgBase + 2);
-        // Aplicar STAB, es decir, el pokemon que ejecuta el ataque y el propio ataque son del mismo tipo
+        
         Class<?>[] interfaces = ejecutor.getClass().getInterfaces();
-        if(interfaces!=null && interfaces.length>0){
-            for (Class<?> interfaceType : interfaces) {
-                if(interfaceType.getSimpleName().equalsIgnoreCase(tipo.name())){
-                    danioBase *= 1.5;
-                }
+        for (Class<?> interfaceType : interfaces) {
+            if(interfaceType.getSimpleName().equalsIgnoreCase(tipo.name())){
+                danioBase *= 1.5;
             }
         }
-        // Aplicar efectividad de tipo
-        double efectividad = obtenerEfectividad(objetivo, sb);
-        danioBase *= efectividad;
-        // Aplicar golpe critico
-        if (esGolpeCritico(ejecutor)) {
-            sb.append("¡ATAQUE CRITICO! ");
-            danioBase *= 1.5;
+
+        double multiplicador = 1.0;
+        Class<?>[] interfacesObj = objetivo.getClass().getInterfaces();
+        for (Class<?> interfaceType : interfacesObj) {
+            String tipoDef = interfaceType.getSimpleName().toUpperCase();
+            if(tipo.esDebilContra(tipoDef)) { sb.append(" No es muy efectivo..."); multiplicador *= 0.5; }
+            if(tipo.esFuerteContra(tipoDef)) { sb.append(" ¡Es super efectivo!"); multiplicador *= 2.0; }
+            if(tipo.esInmuneContra(tipoDef)) { sb.append(" Es inmune..."); multiplicador *= 0.0; }
         }
-        // Aplicar variacion aleatoria
-        double variacion = 0.85 + (Math.random() * 0.15);
-        danioBase *= variacion;
+        
+        danioBase *= multiplicador;
+        if (Math.random() < (1.0 / 16.0)) { sb.append(" ¡ATAQUE CRITICO!"); danioBase *= 1.5; }
+        danioBase *= (0.85 + (Math.random() * 0.15));
 
         return (int) Math.max(1, danioBase);
     }
 
-    protected boolean esGolpeCritico(Pokemon ejecutor) {
-        double probabilidadCritico = 1.0 / 16.0;
-        return Math.random() < probabilidadCritico;
+    public String getNombre() { return nombre; }
+    public int getDmgBase() { return dmgBase; }
+    public int getPrecision() { return precision; }
+    public Tipo getTipo() { return tipo; }
+    public boolean isEsEspecial() { return esEspecial; }
+    public int getPp() { return pp; }
+    public int getCantidad() { return cantidad; }
+    public int getPrioridad() { return prioridad; }
+    public void setPrioridad(int prioridad) { this.prioridad = prioridad;
     }
 
-    protected double obtenerEfectividad(Pokemon objetivo, StringBuilder sb) {
-        double multiplicador = 1;
-        Class<?>[] interfaces = objetivo.getClass().getInterfaces();
-        if(interfaces!=null && interfaces.length>0){
-            for (Class<?> interfaceType : interfaces) {
-                if(tipo.esDebilContra(interfaceType.getSimpleName().toUpperCase())){
-                    //System.out.println(tipo +" es debil contra "+interfaceType.getSimpleName().toUpperCase());
-                    sb.append("No es muy efectivo... ");
-                    multiplicador *= 0.5;
-                }
-                if(tipo.esFuerteContra(interfaceType.getSimpleName().toUpperCase())){
-                    //System.out.println(tipo +" es fuerte contra "+interfaceType.getSimpleName().toUpperCase());
-                    sb.append("¡Es super efectivo! ");
-                    multiplicador *= 2;
-                }
-                if(tipo.esInmuneContra(interfaceType.getSimpleName().toUpperCase())){
-                    //System.out.println(tipo +" es inmune contra "+interfaceType.getSimpleName().toUpperCase());
-                    sb.append("Es inmune al ["+tipo+"] ");
-                    multiplicador *= 0;
-                }
-            }
-        }
-        return multiplicador;
-    }
 
-    public String getNombre() {
-        return nombre;
-    }
-
-    public int getDmgBase() {
-        return dmgBase;
-    }
-
-    public int getPrecision() {
-        return precision;
-    }
-
-    public Tipo getTipo() {
-        return tipo;
-    }
-
-    public boolean isEsEspecial() {
-        return esEspecial;
-    }
-
-    public int getPrioridad() {
-        return prioridad;
-    }
-
-    public void setPrioridad(int prioridad) {
-        this.prioridad = prioridad;
-    }
-
-    public int getPp() {
-        return pp;
-    }
-
-    public int getCantidad() {
-        return cantidad;
+    public Object clone(Ataque ataque)  {
+        Ataque nuevoAtaque= new Ataque(ataque.getNombre(), ataque.getDmgBase(), ataque.getPrecision(), ataque.getTipo(), ataque.isEsEspecial(), ataque.getCantidad());
+        return nuevoAtaque;
     }
 }

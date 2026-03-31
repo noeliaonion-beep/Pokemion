@@ -2,13 +2,15 @@ package es.masanz.ut7.pokemonfx.app;
 
 import es.masanz.ut7.pokemonfx.controller.MapController;
 import es.masanz.ut7.pokemonfx.model.base.Entrenador;
+import es.masanz.ut7.pokemonfx.model.base.Consumible;
+import es.masanz.ut7.pokemonfx.model.base.Pokebolas;
+import es.masanz.ut7.pokemonfx.model.enums.TipoConsumible;
+import es.masanz.ut7.pokemonfx.model.enums.Pokebols;
 import es.masanz.ut7.pokemonfx.model.pokemons.Mimikyu;
 import javafx.application.Application;
 import javafx.stage.Stage;
 
 public class GameApp extends Application {
-
-    // SPRITES OBTENIDOS DE (ENTRE OTROS) https://www.spriters-resource.com/game_boy_gbc/pokemongoldsilver/
 
     public static Entrenador jugador;
 
@@ -18,9 +20,15 @@ public class GameApp extends Application {
     }
 
     public static void main(String[] args) {
-        // TODO 00: AQUI DEFINIR VUESTRO ENTRENADOR INICIAL
         jugador = new Entrenador();
-        jugador.incluirPokemonParaCombatir(0,new Mimikyu(100));
+        
+        // Creamos el equipo inicial usando las clases individuales
+        jugador.incluirPokemonParaCombatir(0, new Mimikyu(100));
+        
+        // Items iniciales
+        jugador.anadirItem(new Consumible(5, false, TipoConsumible.POCION));
+        jugador.anadirItem(new Pokebolas(10, false, Pokebols.POKEBOL));
+        
         launch(args);
     }
 }

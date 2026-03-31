@@ -2,10 +2,13 @@ package es.masanz.ut7.pokemonfx.controller;
 
 import es.masanz.ut7.pokemonfx.app.GameApp;
 import es.masanz.ut7.pokemonfx.manager.PokemonManager;
-import es.masanz.ut7.pokemonfx.model.base.Ataque;
-import es.masanz.ut7.pokemonfx.model.base.Pokemon;
+import es.masanz.ut7.pokemonfx.model.base.*;
 import es.masanz.ut7.pokemonfx.model.fx.NPC;
 
+import es.masanz.ut7.pokemonfx.model.pokemons.Bulbasaur;
+import es.masanz.ut7.pokemonfx.model.pokemons.Charmander;
+import es.masanz.ut7.pokemonfx.model.pokemons.Mimikyu;
+import es.masanz.ut7.pokemonfx.model.pokemons.Squirtle;
 import javafx.animation.*;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -15,7 +18,6 @@ import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
-import javafx.scene.effect.ColorAdjust;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
@@ -23,8 +25,6 @@ import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
-import javafx.scene.text.Text;
-import javafx.scene.text.TextFlow;
 import javafx.stage.Stage;
 import javafx.util.Duration;
 
@@ -50,6 +50,9 @@ public class CombateController {
     private Pokemon npcPokemon;
     private Pokemon[] availablePokemons;
     private String ruta;
+
+    private Label battleText;
+    private HBox buttonLayout;
 
     public void load(Stage primaryStage, Scene previousStage, NPC npc, String ruta) {
         this.primaryStage = primaryStage;
@@ -85,23 +88,11 @@ public class CombateController {
         npcPokemonIV.setSmooth(false);
         npcPokemonIV.setPreserveRatio(true);
 
-        npcInfo = crearInfoBox(
-                npcPokemon.getClass().getSimpleName(),
-                npcPokemon.getNivel(),
-                npcPokemon.getHpActual(),
-                npcPokemon.getMaxHP(),
-                false
-        );
+        npcInfo = crearInfoBox(npcPokemon.getNombre(), npcPokemon.getNivel(), npcPokemon.getHpActual(), npcPokemon.getMaxHP());
         npcInfo.setLayoutX(20);
         npcInfo.setLayoutY(20);
 
-        playerInfo = crearInfoBox(
-                selectedPokemon.getApodo()!=null?selectedPokemon.getApodo():selectedPokemon.getClass().getSimpleName(),
-                selectedPokemon.getNivel(),
-                selectedPokemon.getHpActual(),
-                selectedPokemon.getMaxHP(),
-                true
-        );
+        playerInfo = crearInfoBox(selectedPokemon.getNombre(), selectedPokemon.getNivel(), selectedPokemon.getHpActual(), selectedPokemon.getMaxHP());
         playerInfo.setLayoutX(245);
         playerInfo.setLayoutY(220 - 80);
 
@@ -117,13 +108,13 @@ public class CombateController {
         commandBox.setLayoutY(225);
         commandBox.setPrefSize(430, 70);
 
-        Label battleText = new Label();
+        battleText = new Label();
         battleText.setText("¿Qué quieres hacer?");
         battleText.setFont(Font.font("Arial", 14));
         battleText.setTextFill(Color.BLACK);
         battleText.setWrapText(true);
 
-        HBox buttonLayout = new HBox();
+        buttonLayout = new HBox();
         buttonLayout.setSpacing(10);
 
         cargarBotonesDeAcciones(battleText, buttonLayout);
@@ -150,30 +141,22 @@ public class CombateController {
         battleText.setText("¿Qué quieres hacer?");
 
         Button attackButton = new Button("Atacar");
-        Button itemButton = new Button("Mochila");
+        Button itemButton = new Button("Bolsa");
         Button pokemonButton = new Button("Pokémon");
         Button runButton = new Button("Huir");
 
-        if(oponentNPC!=null){
-            runButton.setDisable(true);
-            itemButton.setDisable(true);
-        }
+        if(oponentNPC!=null) runButton.setDisable(true);
 
-        attackButton.setOnAction(e -> {
-            cargarBotonesDeCombate(battleText, buttonLayout);
-        });
-
+        attackButton.setOnAction(e -> cargarBotonesDeCombate(battleText, buttonLayout));
         itemButton.setOnAction(e -> {
-            cargarBotonesDeMochila(battleText, buttonLayout);
+            BolsaController bc = new BolsaController();
+            bc.load(primaryStage, root.getScene(), bola -> {
+                primaryStage.setScene(root.getScene());
+                intentarCapturarConBola(bola);
+            });
         });
-
-        pokemonButton.setOnAction(e -> {
-            createPokemonSelector();
-        });
-
-        runButton.setOnAction(e -> {
-            primaryStage.setScene(previousStage);
-        });
+        pokemonButton.setOnAction(e -> createPokemonSelector());
+        runButton.setOnAction(e -> primaryStage.setScene(previousStage));
 
         buttonLayout.getChildren().addAll(attackButton, itemButton, pokemonButton, runButton);
     }
@@ -181,10 +164,8 @@ public class CombateController {
     private void cargarBotonesDeCombate(Label battleText, HBox buttonLayout){
         buttonLayout.getChildren().clear();
         battleText.setText("");
-
         GridPane statsGrid = new GridPane();
-        statsGrid.setHgap(10);
-        statsGrid.setVgap(5);
+        statsGrid.setHgap(10); statsGrid.setVgap(5);
         int auxContador = 0;
         HashMap<String, Ataque> ataques = selectedPokemon.getAtaques();
         for (Ataque ataque : ataques.values()) {
@@ -194,648 +175,232 @@ public class CombateController {
                 selectedPokemon.setAtaqueSeleccionado(ataque);
                 ejecutarRondaAtaque(battleText, buttonLayout);
             });
-            if(ataque.getCantidad()<=0){
-                buttonLayout.setDisable(true);
-            }
+            if(ataque.getCantidad()<=0) btnAtaque.setDisable(true);
             statsGrid.add(btnAtaque, (auxContador%2), (auxContador/2));
-
             auxContador++;
-            if(auxContador>3){
-                break;
-            }
+            if(auxContador>3) break;
         }
-        statsGrid.setMaxHeight(10);
-        statsGrid.setMinHeight(10);
-        statsGrid.setPrefHeight(10);
-        statsGrid.setTranslateY(statsGrid.getTranslateY()-20);
+        statsGrid.setTranslateY(-10);
         Button returnButton = new Button("Volver");
-        returnButton.setOnAction(e -> {
-            cargarBotonesDeAcciones(battleText, buttonLayout);
-        });
-        buttonLayout.getChildren().add(returnButton);
-
-
-
-        buttonLayout.getChildren().add(statsGrid);
+        returnButton.setOnAction(e -> cargarBotonesDeAcciones(battleText, buttonLayout));
+        buttonLayout.getChildren().addAll(returnButton, statsGrid);
     }
 
-    private void cargarBotonesDeMochila(Label battleText, HBox buttonLayout){
-        buttonLayout.getChildren().clear();
-        battleText.setText("¿Qué quieres hacer?");
-
-        Button pokeballButton = new Button("Usar POKEBALL");
-        Button returnButton = new Button("Volver");
-
-        pokeballButton.setOnAction(e -> {
-            intentarCaputarPokemonSalvaje(battleText, buttonLayout);
-        });
-
-        returnButton.setOnAction(e -> {
-            cargarBotonesDeAcciones(battleText, buttonLayout);
-        });
-
-        buttonLayout.getChildren().addAll(pokeballButton, returnButton);
-    }
-
-    private void intentarCaputarPokemonSalvaje(Label battleText, HBox buttonLayout) {
-        battleText.setText("Has lanzado una POKEBALL");
+    public void intentarCapturarConBola(Pokebolas bola) {
+        bola.setCantidad(bola.getCantidad() - 1);
+        battleText.setText("Has lanzado una " + bola.getTipo().name() + "...");
         buttonLayout.getChildren().clear();
 
-        ImageView pokeballIV = new ImageView(new Image(getClass().getResource("/pruebas/pokeball_transparente.png").toExternalForm()));
-
-        pokeballIV.setScaleX(2);
-        pokeballIV.setScaleY(2);
-        pokeballIV.setLayoutX(50);
-        pokeballIV.setLayoutY(300);
-        pokeballIV.setSmooth(false);
+        ImageView pokeballIV = new ImageView();
+        URL resBola = getClass().getResource(bola.getImg());
+        if(resBola != null) pokeballIV.setImage(new Image(resBola.toExternalForm()));
+        
+        pokeballIV.setFitWidth(24); pokeballIV.setFitHeight(24);
         pokeballIV.setPreserveRatio(true);
+        pokeballIV.setLayoutX(50); pokeballIV.setLayoutY(300);
 
-        root.getChildren().addAll(pokeballIV);
+        root.getChildren().add(pokeballIV);
 
-        double finalPokeballX = npcPokemonIV.getLayoutX() - pokeballIV.getLayoutX() + 25;
+        double finalX = npcPokemonIV.getLayoutX() - pokeballIV.getLayoutX() + 25;
+        double finalY = npcPokemonIV.getLayoutY() - pokeballIV.getLayoutY() + 25;
 
-        TranslateTransition movePokeball = new TranslateTransition(Duration.seconds(0.5), pokeballIV);
-        movePokeball.setToX(finalPokeballX);
-        movePokeball.setToY(npcPokemonIV.getLayoutY() - pokeballIV.getLayoutY() + 25);
+        TranslateTransition move = new TranslateTransition(Duration.seconds(0.6), pokeballIV);
+        move.setToX(finalX); move.setToY(finalY);
 
-        ScaleTransition shrinkPokemon = new ScaleTransition(Duration.seconds(0.2), npcPokemonIV);
-        shrinkPokemon.setToX(0);
-        shrinkPokemon.setToY(0);
+        ScaleTransition shrink = new ScaleTransition(Duration.seconds(0.2), npcPokemonIV);
+        shrink.setToX(0); shrink.setToY(0);
+        FadeTransition fade = new FadeTransition(Duration.seconds(0.2), npcPokemonIV);
+        fade.setToValue(0);
 
-        FadeTransition fadePokemon = new FadeTransition(Duration.seconds(0.2), npcPokemonIV);
-        fadePokemon.setToValue(0);
-
-        movePokeball.setOnFinished(event -> {
-            ParallelTransition captureAnimation = new ParallelTransition(shrinkPokemon, fadePokemon);
-            captureAnimation.setOnFinished(event2 -> {
+        move.setOnFinished(e -> {
+            ParallelTransition captureEffect = new ParallelTransition(shrink, fade);
+            captureEffect.setOnFinished(e2 -> {
                 double suelo = npcPokemonIV.getLayoutY() - pokeballIV.getLayoutY() + 75;
-                botarPokeball(suelo, finalPokeballX, pokeballIV, battleText, buttonLayout);
+                botarPokeballConRatio(suelo, finalX, pokeballIV, bola.getTipo().ratioCaptura);
             });
-            captureAnimation.play();
+            captureEffect.play();
         });
-
-        movePokeball.play();
+        move.play();
     }
 
-    private void botarPokeball(double suelo, double finalPokeballX, ImageView pokeballIV, Label battleText, HBox buttonLayout){
-        double primerRebote = suelo - 30;
-        double segundoRebote = suelo - 15;
-
+    private void botarPokeballConRatio(double suelo, double finalX, ImageView pokeballIV, double ratio){
         TranslateTransition caida1 = new TranslateTransition(Duration.seconds(0.25), pokeballIV);
-        caida1.setToY(suelo);
-        caida1.setInterpolator(Interpolator.EASE_IN);
-
-        TranslateTransition rebote1 = new TranslateTransition(Duration.seconds(0.2), pokeballIV);
-        rebote1.setToY(primerRebote);
-        rebote1.setInterpolator(Interpolator.EASE_OUT);
-
-        TranslateTransition caida2 = new TranslateTransition(Duration.seconds(0.2), pokeballIV);
-        caida2.setToY(suelo);
-        caida2.setInterpolator(Interpolator.EASE_IN);
-
-        TranslateTransition rebote2 = new TranslateTransition(Duration.seconds(0.1), pokeballIV);
-        rebote2.setToY(segundoRebote);
-        rebote2.setInterpolator(Interpolator.EASE_OUT);
-
-        TranslateTransition caidaFinal = new TranslateTransition(Duration.seconds(0.1), pokeballIV);
-        caidaFinal.setToY(suelo);
-        caidaFinal.setInterpolator(Interpolator.EASE_IN);
-        caida1.setOnFinished(e -> rebote1.play());
-        rebote1.setOnFinished(e -> caida2.play());
-        caida2.setOnFinished(e -> rebote2.play());
-        rebote2.setOnFinished(e -> caidaFinal.play());
-        caidaFinal.setOnFinished(e -> rotarPokeball(finalPokeballX, pokeballIV, 3, battleText, buttonLayout));
-
+        caida1.setToY(suelo); caida1.setInterpolator(Interpolator.EASE_IN);
+        caida1.setOnFinished(e -> rotarPokeball(finalX, pokeballIV, 3, ratio));
         caida1.play();
     }
 
-    private void rotarPokeball(double posX, ImageView pokeballIV, int contador, Label battleText, HBox buttonLayout){
-        double tiempoAnimacionRotacion = 0.2;
-        int gradosRotacionPokeball = 60;
-        int distanciaRotacionPokeball = 12;
-
-        RotateTransition rotateLeft = new RotateTransition(Duration.seconds(tiempoAnimacionRotacion), pokeballIV);
-        rotateLeft.setByAngle(-gradosRotacionPokeball);
-        TranslateTransition rotateLeftT = new TranslateTransition(Duration.seconds(tiempoAnimacionRotacion), pokeballIV);
-        rotateLeftT.setToX(posX-distanciaRotacionPokeball);
-        ParallelTransition rotateLeftAnimation = new ParallelTransition(rotateLeft, rotateLeftT);
-
-        RotateTransition rotateBack1 = new RotateTransition(Duration.seconds(tiempoAnimacionRotacion), pokeballIV);
-        rotateBack1.setByAngle(gradosRotacionPokeball);
-        TranslateTransition rotateBack1T = new TranslateTransition(Duration.seconds(tiempoAnimacionRotacion), pokeballIV);
-        rotateBack1T.setToX(posX);
-        ParallelTransition rotateBack1Animation = new ParallelTransition(rotateBack1, rotateBack1T);
-
-        RotateTransition rotateRight = new RotateTransition(Duration.seconds(tiempoAnimacionRotacion), pokeballIV);
-        rotateRight.setByAngle(gradosRotacionPokeball);
-        TranslateTransition rotateRightT = new TranslateTransition(Duration.seconds(tiempoAnimacionRotacion), pokeballIV);
-        rotateRightT.setToX(posX+distanciaRotacionPokeball);
-        rotateRightT.setInterpolator(Interpolator.EASE_IN);
-        ParallelTransition rotateRightAnimation = new ParallelTransition(rotateRight, rotateRightT);
-
-        RotateTransition rotateBack2 = new RotateTransition(Duration.seconds(tiempoAnimacionRotacion), pokeballIV);
-        rotateBack2.setByAngle(-gradosRotacionPokeball);
-        TranslateTransition rotateBack2T = new TranslateTransition(Duration.seconds(tiempoAnimacionRotacion), pokeballIV);
-        rotateBack2T.setToX(posX);
-        rotateBack2T.setInterpolator(Interpolator.EASE_IN);
-        ParallelTransition rotateBack2Animation = new ParallelTransition(rotateBack2, rotateBack2T);
-
-        rotateLeftAnimation.setOnFinished(e -> rotateBack1Animation.play());
-        rotateBack1Animation.setOnFinished(e -> rotateRightAnimation.play());
-        rotateRightAnimation.setOnFinished(e -> rotateBack2Animation.play());
-        rotateBack2Animation.setOnFinished(e -> {
+    private void rotarPokeball(double posX, ImageView pokeballIV, int contador, double ratio){
+        RotateTransition rot = new RotateTransition(Duration.seconds(0.3), pokeballIV);
+        rot.setByAngle(30); rot.setAutoReverse(true); rot.setCycleCount(2);
+        rot.setOnFinished(e -> {
             boolean pokemonAtrapado = true;
-            int porcentajeVidaPokemon = 100 - (npcPokemon.getHpActual() * 100) / npcPokemon.getMaxHP();
-            int numRandom = (int) (Math.random()*100);
-            if(numRandom > porcentajeVidaPokemon){
-                pokemonAtrapado = false;
-            }
-            if(!pokemonAtrapado){
-                liberarPokeball(pokeballIV, battleText, buttonLayout);
-            } else {
-                if(contador>1) {
-                    rotarPokeball(posX, pokeballIV, contador-1, battleText, buttonLayout);
-                } else {
-                    atraparPokemon(battleText, buttonLayout);
-                }
+            int lifePercentage = 100 - (npcPokemon.getHpActual() * 100) / npcPokemon.getMaxHP();
+            double prob = (lifePercentage / 100.0) + ratio;
+            if(Math.random() > prob && ratio < 1.0) pokemonAtrapado = false;
+            
+            if(!pokemonAtrapado) liberarPokeball(pokeballIV);
+            else {
+                if(contador > 1) rotarPokeball(posX, pokeballIV, contador - 1, ratio);
+                else atraparPokemon();
             }
         });
-
-        rotateLeftAnimation.play();
+        rot.play();
     }
 
-    private void liberarPokeball(ImageView pokeballIV, Label battleText, HBox buttonLayout){
+    private void liberarPokeball(ImageView pokeballIV){
         battleText.setText("Oh... No has logrado atraparlo [PAQUETE]");
-        ScaleTransition growPokemon = new ScaleTransition(Duration.seconds(0.2), npcPokemonIV);
-        growPokemon.setToX(1);
-        growPokemon.setToY(1);
-
-        FadeTransition showPokemon = new FadeTransition(Duration.seconds(0.2), npcPokemonIV);
-        showPokemon.setToValue(1);
-
-        ScaleTransition shrinkPokeball = new ScaleTransition(Duration.seconds(0.2), pokeballIV);
-        shrinkPokeball.setToX(0);
-        shrinkPokeball.setToY(0);
-
-        FadeTransition fadePokeball = new FadeTransition(Duration.seconds(0.2), pokeballIV);
-        fadePokeball.setToValue(0);
-
-        ParallelTransition reappearPokemon = new ParallelTransition(growPokemon, showPokemon, shrinkPokeball, fadePokeball);
-
-        reappearPokemon.setOnFinished(e -> {
+        ScaleTransition grow = new ScaleTransition(Duration.seconds(0.2), npcPokemonIV);
+        grow.setToX(1); grow.setToY(1);
+        FadeTransition show = new FadeTransition(Duration.seconds(0.2), npcPokemonIV);
+        show.setToValue(1);
+        FadeTransition fadeBall = new FadeTransition(Duration.seconds(0.2), pokeballIV);
+        fadeBall.setToValue(0);
+        ParallelTransition anim = new ParallelTransition(grow, show, fadeBall);
+        anim.setOnFinished(e -> {
+            root.getChildren().remove(pokeballIV);
             new Timeline(new KeyFrame(Duration.seconds(1), e2 -> {
                 seleccionarAtaqueOponente();
                 selectedPokemon.setAtaqueSeleccionado(null);
                 ejecutarRondaAtaque(battleText, buttonLayout);
             })).play();
         });
-
-        reappearPokemon.play();
+        anim.play();
     }
 
-    private void atraparPokemon(Label battleText, HBox buttonLayout){
+    private void atraparPokemon(){
         battleText.setText("¡Enhorabuena! Has logrado atrapar a ["+npcPokemon.getClass().getSimpleName()+"]");
         GameApp.jugador.getPokemonesCapturados().add(npcPokemon);
         new Timeline(new KeyFrame(Duration.millis(1500), e2 -> mostrarPantallaPokemonCapturado())).play();
     }
 
-    private Ataque seleccionarAtaqueOponente(){
+    private void seleccionarAtaqueOponente(){
         HashMap<String, Ataque> ataquesMap = npcPokemon.getAtaques();
         List<Ataque> ataques = new ArrayList<>(ataquesMap.values());
-        Ataque ataqueRandom = ataques.get((int) (Math.random() * ataques.size()));
-        npcPokemon.setAtaqueSeleccionado(ataqueRandom);
-        return ataqueRandom;
+        npcPokemon.setAtaqueSeleccionado(ataques.get((int) (Math.random() * ataques.size())));
     }
 
     private void ejecutarRondaAtaque(Label battleText, HBox buttonLayout) {
+        Ataque atJug = selectedPokemon.getAtaqueSeleccionado();
+        Ataque atOp = npcPokemon.getAtaqueSeleccionado();
+        if(atOp == null) return;
 
-        Ataque ataqueJugador = selectedPokemon.getAtaqueSeleccionado();
-        Ataque ataqueOponente = npcPokemon.getAtaqueSeleccionado();
-        if(ataqueOponente==null){
-            return;
-        }
-        // Si, lo se, se puede hacer mejor...
-        Pokemon primeroEnAtacar = null;
-        Pokemon segundoEnAtacar = null;
-        VBox primeraInfoBox = null;
-        VBox segundaInfoBox = null;
-        ImageView primeraIV = null;
-        ImageView segundaIV = null;
-        if(ataqueJugador==null){
-            primeroEnAtacar = npcPokemon;
-            segundoEnAtacar = selectedPokemon;
-            primeraInfoBox = npcInfo;
-            segundaInfoBox = playerInfo;
-            primeraIV = npcPokemonIV;
-            segundaIV = playerPokemonIV;
-        } else if(ataqueJugador.getPrioridad()>ataqueOponente.getPrioridad()){
-            primeroEnAtacar = selectedPokemon;
-            segundoEnAtacar = npcPokemon;
-            primeraInfoBox = playerInfo;
-            segundaInfoBox = npcInfo;
-            primeraIV = playerPokemonIV;
-            segundaIV = npcPokemonIV;
-        } else if(ataqueOponente.getPrioridad()>ataqueJugador.getPrioridad()) {
-            primeroEnAtacar = npcPokemon;
-            segundoEnAtacar = selectedPokemon;
-            primeraInfoBox = npcInfo;
-            segundaInfoBox = playerInfo;
-            primeraIV = npcPokemonIV;
-            segundaIV = playerPokemonIV;
+        final Pokemon[] p1 = new Pokemon[1];
+        final Pokemon[] p2 = new Pokemon[1];
+        final VBox[] b1 = new VBox[1];
+        final VBox[] b2 = new VBox[1];
+        final ImageView[] v1 = new ImageView[1];
+        final ImageView[] v2 = new ImageView[1];
+
+        if(atJug == null || (atOp.getPrioridad() > atJug.getPrioridad())){
+            p1[0] = npcPokemon; p2[0] = selectedPokemon;
+            b1[0] = npcInfo; b2[0] = playerInfo;
+            v1[0] = npcPokemonIV; v2[0] = playerPokemonIV;
         } else {
-            if(selectedPokemon.getVelocidad()>npcPokemon.getVelocidad()){
-                primeroEnAtacar = selectedPokemon;
-                segundoEnAtacar = npcPokemon;
-                primeraInfoBox = playerInfo;
-                segundaInfoBox = npcInfo;
-                primeraIV = playerPokemonIV;
-                segundaIV = npcPokemonIV;
-            } else if(npcPokemon.getVelocidad()>selectedPokemon.getVelocidad()){
-                primeroEnAtacar = npcPokemon;
-                segundoEnAtacar = selectedPokemon;
-                primeraInfoBox = npcInfo;
-                segundaInfoBox = playerInfo;
-                primeraIV = npcPokemonIV;
-                segundaIV = playerPokemonIV;
-            } else {
-                int random = (int) (Math.random()*2);
-                if(random==0){
-                    primeroEnAtacar = selectedPokemon;
-                    segundoEnAtacar = npcPokemon;
-                    primeraInfoBox = playerInfo;
-                    segundaInfoBox = npcInfo;
-                    primeraIV = playerPokemonIV;
-                    segundaIV = npcPokemonIV;
-                } else {
-                    primeroEnAtacar = npcPokemon;
-                    segundoEnAtacar = selectedPokemon;
-                    primeraInfoBox = npcInfo;
-                    segundaInfoBox = playerInfo;
-                    primeraIV = npcPokemonIV;
-                    segundaIV = playerPokemonIV;
-                }
-            }
+            p1[0] = selectedPokemon; p2[0] = npcPokemon;
+            b1[0] = playerInfo; b2[0] = npcInfo;
+            v1[0] = playerPokemonIV; v2[0] = npcPokemonIV;
         }
 
-        Pokemon[] primeroEAArray = {primeroEnAtacar};
-        Pokemon[] segundoEAArray = {segundoEnAtacar};
-        VBox[] primeraIBArray = {primeraInfoBox};
-        VBox[] segundaIBArray = {segundaInfoBox};
-        ImageView[] primeraIVArray = {primeraIV};
-        ImageView[] segundaIVArray = {segundaIV};
+        buttonLayout.getChildren().clear();
+        String msg = p1[0].atacar(p2[0]);
+        battleText.setText(msg);
 
-        if(primeroEAArray[0].getHpActual()>0 && primeroEAArray[0].getAtaqueSeleccionado()!=null) {
-            buttonLayout.getChildren().clear();
-            int hpActualPrimero = segundoEAArray[0].getHpActual();
-            String msg = primeroEAArray[0].atacar(segundoEAArray[0]);
-            battleText.setText(msg);
+        // ACTUALIZACIÓN DE VIDA POR ESTADO (VENENO)
+        actualizarBarrasVida();
 
-            TranslateTransition shake = new TranslateTransition(Duration.millis(150), segundaIVArray[0]);
-            shake.setByX(10);
-            shake.setAutoReverse(true);
-            shake.setCycleCount(6);
-            shake.play();
-
-            Rectangle barraVida = buscarBarraVida(segundaIBArray[0]);
-            Rectangle[] primeraBVArray = {barraVida};
-            double healthPercentage = (double) segundoEAArray[0].getHpActual() / segundoEAArray[0].getMaxHP();
-            //barraVida.setWidth(196 * healthPercentage);
-            //METO ANIMACION
-            double newWidth = 196 * healthPercentage;
-            KeyValue keyValue = new KeyValue(primeraBVArray[0].widthProperty(), newWidth, Interpolator.EASE_IN);
-            KeyFrame keyFrame = new KeyFrame(Duration.millis(VELOCIDAD_ANIMACIONES), keyValue);
-            Timeline timeline = new Timeline(keyFrame);
-
-            Label hpLabel = buscarHPLabel(segundaIBArray[0]);
-            //hpLabel.setText("HP: "+segundoEAArray[0].getHpActual()+" / "+segundoEAArray[0].getMaxHP());
-            //METO ANIMACION
-            Label[] hpLArray = {hpLabel};
-            String oldText = hpLabel.getText();
-            int oldHP = Integer.parseInt(oldText.split("HP: ")[1].split(" /")[0]);
-            Timeline timelineLabel = new Timeline();
-            int frames = 30;
-            double frameDuration = VELOCIDAD_ANIMACIONES / frames;
-            int hpChange = segundoEAArray[0].getHpActual() - oldHP;
-            for (int i = 0; i <= frames; i++) {
-                int interpolatedHP = oldHP + (hpChange * i) / frames;
-                KeyFrame keyFrameLabel = new KeyFrame(
-                        Duration.millis(i * frameDuration),
-                        e -> hpLArray[0].setText("HP: " + interpolatedHP + " / " + segundoEAArray[0].getMaxHP())
-                );
-                timelineLabel.getKeyFrames().add(keyFrameLabel);
-            }
-
-            ParallelTransition parallelTransition = new ParallelTransition(timeline, timelineLabel);
-            parallelTransition.setOnFinished(e -> {
-                if (segundoEAArray[0].getHpActual() > 0 && segundoEAArray[0].getAtaqueSeleccionado()!=null) {
-                    int hpActualSegundo = primeroEAArray[0].getHpActual();
-                    String msg2 = segundoEAArray[0].atacar(primeroEAArray[0]);
+        TranslateTransition shake = new TranslateTransition(Duration.millis(150), v2[0]);
+        shake.setByX(10); shake.setAutoReverse(true); shake.setCycleCount(4);
+        
+        shake.setOnFinished(e -> {
+            actualizarBarrasVida();
+            if(p2[0].getHpActual() > 0){
+                new Timeline(new KeyFrame(Duration.seconds(1), e2 -> {
+                    String msg2 = p2[0].atacar(p1[0]);
                     battleText.setText(msg2);
-                    Rectangle barraVida2 = buscarBarraVida(primeraIBArray[0]);
-                    double healthPercentage2 = (double) primeroEAArray[0].getHpActual() / primeroEAArray[0].getMaxHP();
-                    //barraVida2.setWidth(196 * healthPercentage2);
-                    //METO ANIMACION
-                    double newWidth2 = 196 * healthPercentage2;
-                    KeyValue keyValue2 = new KeyValue(barraVida2.widthProperty(), newWidth2, Interpolator.EASE_IN);
-                    KeyFrame keyFrame2 = new KeyFrame(Duration.millis(VELOCIDAD_ANIMACIONES), keyValue2);
-                    Timeline timeline2 = new Timeline(keyFrame2);
-
-                    Label hpLabel2 = buscarHPLabel(primeraIBArray[0]);
-                    //hpLabel2.setText("HP: "+primeroEAArray[0].getHpActual()+" / "+primeroEAArray[0].getMaxHP());
-                    //METO ANIMACION
-                    Label[] hpLArray2 = {hpLabel2};
-                    String oldText2 = hpLabel2.getText();
-                    int oldHP2 = Integer.parseInt(oldText2.split("HP: ")[1].split(" /")[0]);
-                    Timeline timelineLabel2 = new Timeline();
-                    int hpChange2 = primeroEAArray[0].getHpActual() - oldHP2;
-                    for (int i = 0; i <= frames; i++) {
-                        int interpolatedHP2 = oldHP2 + (hpChange2 * i) / frames;
-                        KeyFrame keyFrameLabel2 = new KeyFrame(
-                                Duration.millis(i * frameDuration),
-                                e2 -> hpLArray2[0].setText("HP: " + interpolatedHP2 + " / " + primeroEAArray[0].getMaxHP())
-                        );
-                        timelineLabel2.getKeyFrames().add(keyFrameLabel2);
-                    }
-
-                    ParallelTransition parallelTransition2 = new ParallelTransition(timeline2, timelineLabel2);
-                    parallelTransition2.setOnFinished(e2 -> {
-
-                        if(primeroEAArray[0].getHpActual()<=0 || segundoEAArray[0].getHpActual()<=0){
-                            if(selectedPokemon.getHpActual()>0){
-                                int expObtenida = calcularExperienciaObtenida(selectedPokemon, npcPokemon);
-                                String nombrePokemon = selectedPokemon.getApodo()!=null?selectedPokemon.getApodo():selectedPokemon.getClass().getSimpleName();
-                                String msg3 = "["+nombrePokemon+"] obtiene ["+expObtenida+"] puntos de [EXPERIENCIA].";
-                                battleText.setText(msg3);
-                                boolean aumentaNivel = selectedPokemon.sumarExperiencia(expObtenida);
-                                if(aumentaNivel) {
-                                    msg3 = msg3 + " Su [NIVEL] ahora es ["+selectedPokemon.getNivel()+"].";
-                                }
-                                battleText.setText(msg3);
-                                Timeline lapsoSubirExp = new Timeline(new KeyFrame(Duration.millis(1500), e3 -> analizarSituacion()));
-                                lapsoSubirExp.play();
-                            } else {
-                                analizarSituacion();
-                            }
-                        } else {
-                            cargarBotonesDeAcciones(battleText, buttonLayout);
-                        }
-                    });
-                    parallelTransition2.play();
-
-                    TranslateTransition shake2 = new TranslateTransition(Duration.millis(150), primeraIVArray[0]);
-                    shake2.setByX(10);
-                    shake2.setAutoReverse(true);
-                    shake2.setCycleCount(6);
-                    shake2.play();
-
-                } else {
-                    if(primeroEAArray[0].getHpActual()<=0 || segundoEAArray[0].getHpActual()<=0){
-                        if(selectedPokemon.getHpActual()>0){
-                            int expObtenida = calcularExperienciaObtenida(selectedPokemon, npcPokemon);
-                            String nombrePokemon = selectedPokemon.getApodo()!=null?selectedPokemon.getApodo():selectedPokemon.getClass().getSimpleName();
-                            String msg3 = "["+nombrePokemon+"] obtiene ["+expObtenida+"] puntos de [EXPERIENCIA].";
-                            battleText.setText(msg3);
-                            boolean aumentaNivel = selectedPokemon.sumarExperiencia(expObtenida);
-                            if(aumentaNivel) {
-                                msg3 = msg3 + " Su [NIVEL] ahora es ["+selectedPokemon.getNivel()+"].";
-                            }
-                            battleText.setText(msg3);
-                            Timeline lapsoSubirExp = new Timeline(new KeyFrame(Duration.millis(1500), e3 -> analizarSituacion()));
-                            lapsoSubirExp.play();
-                        } else {
-                            analizarSituacion();
-                        }
-                    } else {
-                        cargarBotonesDeAcciones(battleText, buttonLayout);
-                    }
-                }
-            });
-            parallelTransition.play();
-        }
+                    actualizarBarrasVida();
+                    new Timeline(new KeyFrame(Duration.seconds(1), e3 -> finalizarTurno())).play();
+                })).play();
+            } else {
+                finalizarTurno();
+            }
+        });
+        shake.play();
     }
 
-    // Me lo guardo para mas adelante...
-    public TextFlow generarMensajeCombate(Pokemon pokemon, int dano){
-        Text text1 = new Text("[");
-        Text boldText1 = new Text(pokemon.getApodo()!=null ? pokemon.getApodo() : pokemon.getClass().getSimpleName());
-        boldText1.setStyle("-fx-font-weight: bold;");
-        Text text2 = new Text("] ejecuta [");
-        Text boldText2 = new Text(pokemon.getAtaqueSeleccionado().getNombre());
-        boldText2.setStyle("-fx-font-weight: bold;");
-        Text text3 = new Text("] y hace [");
-        Text boldText3 = new Text(String.valueOf(dano));
-        boldText3.setStyle("-fx-font-weight: bold;");
-        Text text4 = new Text("] puntos de daño.");
-        TextFlow textFlow = new TextFlow(text1, boldText1, text2, boldText2, text3, boldText3, text4);
-        return textFlow;
+    private void actualizarBarrasVida() {
+        actualizarInfoBox(playerInfo, selectedPokemon);
+        actualizarInfoBox(npcInfo, npcPokemon);
+    }
+
+    private void actualizarInfoBox(VBox box, Pokemon p) {
+        Rectangle barra = buscarBarraVida(box);
+        Label hpL = buscarHPLabel(box);
+        if(barra != null) {
+            double targetWidth = 196 * ((double)p.getHpActual()/p.getMaxHP());
+            Timeline t = new Timeline(new KeyFrame(Duration.millis(500), new KeyValue(barra.widthProperty(), targetWidth)));
+            t.play();
+        }
+        if(hpL != null) hpL.setText("HP: " + p.getHpActual() + " / " + p.getMaxHP());
+    }
+
+    private void finalizarTurno() {
+        if(selectedPokemon.getHpActual() <= 0 || npcPokemon.getHpActual() <= 0) analizarSituacion();
+        else cargarBotonesDeAcciones(battleText, buttonLayout);
     }
 
     private void analizarSituacion() {
-        boolean jugadorDerrotado = true;
-        for (int i = 0; i < availablePokemons.length; i++) {
-            Pokemon pokemon = availablePokemons[i];
-            if(pokemon!=null && pokemon.getHpActual()>0){
-                jugadorDerrotado = false;
-                break;
-            }
-        }
-        if(oponentNPC != null) {
-            boolean terminarCombate = true;
-            for (int i = 0; i < oponentNPC.getEntrenador().getPokemonesCombate().length; i++) {
-                Pokemon pokemon = oponentNPC.getEntrenador().getPokemonesCombate()[i];
-                if(pokemon!=null && pokemon.getHpActual()>0){
-                    terminarCombate = false;
-                    break;
-                }
-            }
-            if(terminarCombate){
-                mostrarPantallaVictoria();
-            } else {
-                if(jugadorDerrotado){
-                    mostrarPantallaDerrota();
-                } else {
-                    if(selectedPokemon.getHpActual()<=0){
-                        TranslateTransition shake = new TranslateTransition(Duration.millis(VELOCIDAD_ANIMACIONES/2), playerPokemonIV);
-                        shake.setByX(-1000);
-                        shake.setOnFinished(e -> {
-                            createPokemonSelector();
-                        });
-                        shake.play();
-                    } else {
-                        TranslateTransition shake = new TranslateTransition(Duration.millis(VELOCIDAD_ANIMACIONES/2), npcPokemonIV);
-                        shake.setByX(1000);
-                        shake.setOnFinished(e -> {
-                            load(primaryStage, previousStage, oponentNPC, ruta);
-                        });
-                        shake.play();
-                    }
-                }
-            }
-        } else if (npcPokemon != null && npcPokemon.getHpActual()<=0) {
-            mostrarPantallaVictoria();
-        } else {
-            if(jugadorDerrotado){
-                mostrarPantallaDerrota();
-            } else {
-                createPokemonSelector();
-            }
+        if(npcPokemon.getHpActual() <= 0) mostrarPantallaVictoria();
+        else if(selectedPokemon.getHpActual() <= 0){
+            boolean algunoVivo = false;
+            for(Pokemon p : availablePokemons) if(p != null && p.getHpActual() > 0) { algunoVivo = true; break; }
+            if(algunoVivo) createPokemonSelector();
+            else mostrarPantallaDerrota();
         }
     }
 
     private void mostrarPantallaVictoria() {
-        StackPane pantallaVictoria = new StackPane();
-        pantallaVictoria.setStyle("-fx-background-color: black; -fx-opacity: 0.9;");
-
-        Label mensaje = new Label("Has ganado el combate");
-        mensaje.setTextFill(Color.WHITE);
-        mensaje.setFont(new Font(24));
-
-        Button botonContinuar = new Button("Continuar");
-        botonContinuar.setStyle("-fx-background-color: white; -fx-text-fill: black; -fx-font-size: 16px;");
-        botonContinuar.setOnAction(e -> analizarEvolucionPokemon());
-
-        VBox contenedor = new VBox(20, mensaje, botonContinuar);
-        contenedor.setAlignment(Pos.CENTER);
-        pantallaVictoria.getChildren().add(contenedor);
-        Scene escenaVictoria = new Scene(pantallaVictoria, primaryStage.getWidth(), primaryStage.getHeight());
-
-        primaryStage.setScene(escenaVictoria);
-    }
-
-    private int calcularExperienciaObtenida(Pokemon pokemonGanador, Pokemon pokemonDerrotado) {
-        int nivelPokemonGanador = pokemonGanador.getNivel();
-        int expBasePokemonDerrotado = pokemonDerrotado.getExpBase();
-        int nivelPokemonDerrotado = pokemonDerrotado.getNivel();
-        double experiencia = (expBasePokemonDerrotado * Math.pow(nivelPokemonDerrotado, 2)) / (7.0 * nivelPokemonGanador);
-        return (int) Math.round(experiencia);
+        StackPane pane = new StackPane(); pane.setStyle("-fx-background-color: rgba(0,0,0,0.8);");
+        Label l = new Label("¡Victoria! " + npcPokemon.getNombre() + " debilitado.");
+        l.setTextFill(Color.WHITE); l.setFont(new Font(20));
+        Button b = new Button("Continuar"); b.setOnAction(e -> analizarEvolucionPokemon());
+        VBox v = new VBox(20, l, b); v.setAlignment(Pos.CENTER);
+        pane.getChildren().add(v); primaryStage.setScene(new Scene(pane, 480, 320));
     }
 
     private void mostrarPantallaPokemonCapturado() {
-        StackPane pantallaPokemonCapturado = new StackPane();
-        pantallaPokemonCapturado.setStyle("-fx-background-color: black; -fx-opacity: 0.9;");
-
-        Label mensaje = new Label("¡Has capturado a " + npcPokemon.getClass().getSimpleName() + "!");
-        mensaje.setTextFill(Color.WHITE);
-        mensaje.setFont(new Font(24));
-
-        Label instruccion = new Label("Introduce un apodo (opcional):");
-        instruccion.setTextFill(Color.WHITE);
-        instruccion.setFont(new Font(16));
-
-        TextField inputApodo = new TextField();
-        inputApodo.setMaxWidth(300);
-        inputApodo.setMinWidth(300);
-        inputApodo.setPrefWidth(300);
-        inputApodo.setPromptText("Escribe un apodo...");
-
-        Label nota = new Label("(Si no introduces un apodo, se usará el nombre original)");
-        nota.setTextFill(Color.GRAY);
-        nota.setFont(new Font(12));
-
-        Button botonContinuar = new Button("Continuar");
-        botonContinuar.setStyle("-fx-background-color: white; -fx-text-fill: black; -fx-font-size: 16px;");
-        botonContinuar.setOnAction(e -> {
-            String apodo = inputApodo.getText().trim();
-            if (apodo!=null && !apodo.isEmpty()) {
-                npcPokemon.setApodo(apodo);
-            }
-            analizarEvolucionPokemon();
+        StackPane pane = new StackPane(); pane.setStyle("-fx-background-color: black;");
+        Label l = new Label("¡Has capturado a " + npcPokemon.getNombre() + "!");
+        l.setTextFill(Color.WHITE);
+        TextField tf = new TextField(); tf.setPromptText("Apodo..."); tf.setMaxWidth(200);
+        Button b = new Button("Listo");
+        b.setOnAction(e -> {
+            if(!tf.getText().isEmpty()) npcPokemon.setApodo(tf.getText());
+            primaryStage.setScene(previousStage);
         });
-
-        VBox contenedor = new VBox(15, mensaje, instruccion, inputApodo, nota, botonContinuar);
-        contenedor.setAlignment(Pos.CENTER);
-        pantallaPokemonCapturado.getChildren().add(contenedor);
-        Scene escenaVictoria = new Scene(pantallaPokemonCapturado, primaryStage.getWidth(), primaryStage.getHeight());
-
-        primaryStage.setScene(escenaVictoria);
+        VBox v = new VBox(15, l, tf, b); v.setAlignment(Pos.CENTER);
+        pane.getChildren().add(v); primaryStage.setScene(new Scene(pane, 480, 320));
     }
 
-    private void mostrarPantallaDerrota() {
-        StackPane pantallaDerrota = new StackPane();
-        pantallaDerrota.setStyle("-fx-background-color: black; -fx-opacity: 0.9;");
-
-        Label mensaje = new Label("Oh... Has perdido :(");
-        mensaje.setTextFill(Color.WHITE);
-        mensaje.setFont(new Font(24));
-
-        Button botonContinuar = new Button("Continuar");
-        botonContinuar.setStyle("-fx-background-color: white; -fx-text-fill: black; -fx-font-size: 16px;");
-        botonContinuar.setOnAction(e -> analizarEvolucionPokemon());
-
-        VBox contenedor = new VBox(20, mensaje, botonContinuar);
-        contenedor.setAlignment(Pos.CENTER);
-        pantallaDerrota.getChildren().add(contenedor);
-        Scene escenaVictoria = new Scene(pantallaDerrota, primaryStage.getWidth(), primaryStage.getHeight());
-
-        primaryStage.setScene(escenaVictoria);
-    }
+    private void mostrarPantallaDerrota() { primaryStage.setScene(previousStage); }
 
     private void analizarEvolucionPokemon() {
-        boolean hayEvolucion = false;
-        for (int i = 0; i < availablePokemons.length; i++) {
-            Pokemon pokemon = availablePokemons[i];
-            if (pokemon != null && pokemon.getNivel() >= pokemon.nivelEvolucion() && pokemon.pokemonAEvolucionar() != null) {
-                hayEvolucion = true;
-                Pokemon evolucionPokemon = pokemon.pokemonAEvolucionar();
-
-                StackPane pantallaEvolucion = new StackPane();
-                pantallaEvolucion.setStyle("-fx-background-color: black; -fx-opacity: 0.9;");
-
-                String nombre = (pokemon.getApodo() != null) ? pokemon.getApodo() : pokemon.getClass().getSimpleName();
-                Label mensaje = new Label("¡Vaya! ¡[" + nombre + "] está EVOLUCIONANDO!");
-                mensaje.setTextFill(Color.WHITE);
-                mensaje.setFont(new Font(24));
-
-                URL resource = getClass().getResource(POKEMONS_FRONT_PATH + pokemon.getClass().getSimpleName() + "_RA.png");
-                ImageView pokemonIV = new ImageView(new Image(resource.toString()));
-
-                URL resource2 = getClass().getResource(POKEMONS_FRONT_PATH + evolucionPokemon.getClass().getSimpleName() + "_RA.png");
-                ImageView evolucionPokemonIV = new ImageView(new Image(resource2.toString()));
-
-                StackPane spriteContainer = new StackPane(pokemonIV, evolucionPokemonIV);
-                evolucionPokemonIV.setVisible(false);
-
-                Button botonContinuar = new Button("Continuar");
-                botonContinuar.setStyle("-fx-background-color: white; -fx-text-fill: black; -fx-font-size: 16px;");
-                botonContinuar.setOnAction(e -> analizarEvolucionPokemon());
-                botonContinuar.setVisible(false);
-
-                VBox contenedor = new VBox(20, mensaje, spriteContainer, botonContinuar);
-                contenedor.setAlignment(Pos.CENTER);
-                pantallaEvolucion.getChildren().add(contenedor);
-                Scene escenaEvolucion = new Scene(pantallaEvolucion, VIEW_WIDTH, VIEW_HEIGHT);
-                primaryStage.setScene(escenaEvolucion);
-
-                Timeline timeline = new Timeline();
-
-                timeline.getKeyFrames().add(new KeyFrame(Duration.seconds(0.5), e -> {
-                    pokemonIV.setVisible(!pokemonIV.isVisible());
-                    evolucionPokemonIV.setVisible(!evolucionPokemonIV.isVisible());
-                }));
-
-                timeline.setCycleCount(5);
-
-                int finalI = i;
-                timeline.setOnFinished(e -> {
-                    botonContinuar.setVisible(true);
-                    availablePokemons[finalI] = evolucionPokemon;
-                    mensaje.setText("¡Enhorabuena! ["+nombre+"] evolucionó en ["+evolucionPokemon.getClass().getSimpleName()+"]");
-                });
-
-                timeline.play();
-                break;
-            }
-        }
-        if(!hayEvolucion){
+        if(selectedPokemon.getNivel() >= selectedPokemon.nivelEvolucion() && selectedPokemon.nivelEvolucion() != -1){
+            Pokemon evo = selectedPokemon.pokemonAEvolucionar();
+            battleText.setText("¡Vaya! " + selectedPokemon.getNombre() + " está evolucionando...");
+            new Timeline(new KeyFrame(Duration.seconds(2), e -> {
+                for(int i=0; i<6; i++) if(availablePokemons[i] == selectedPokemon) availablePokemons[i] = evo;
+                primaryStage.setScene(previousStage);
+            })).play();
+        } else {
             primaryStage.setScene(previousStage);
         }
     }
 
     public Rectangle buscarBarraVida(Parent padre) {
         for (Node node : padre.getChildrenUnmodifiable()) {
-            if (node instanceof Rectangle) {
-                return (Rectangle) node;
-            } else if (node instanceof Parent) {
+            if (node instanceof Rectangle) return (Rectangle) node;
+            else if (node instanceof Parent) {
                 Rectangle found = buscarBarraVida((Parent) node);
                 if (found != null) return found;
             }
@@ -845,11 +410,8 @@ public class CombateController {
 
     public Label buscarHPLabel(Parent padre) {
         for (Node node : padre.getChildrenUnmodifiable()) {
-            if (node instanceof Label) {
-                Label label = (Label) node;
-                if (label.getText().startsWith("HP:")) {
-                    return label;
-                }
+            if (node instanceof Label label) {
+                if (label.getText().startsWith("HP:")) return label;
             } else if (node instanceof Parent) {
                 Label found = buscarHPLabel((Parent) node);
                 if (found != null) return found;
@@ -859,182 +421,50 @@ public class CombateController {
     }
 
     private void loadAvailablePokemons() {
-        if(selectedPokemon==null || selectedPokemon.getHpActual()<=0){
-            availablePokemons = GameApp.jugador.getPokemonesCombate();
-            for (int i = 0; i < 6; i++) {
-                Pokemon pokemon = availablePokemons[i];
-                if(pokemon!=null && pokemon.getHpActual()>0){
-                    selectedPokemon = pokemon;
-                    break;
-                }
-            }
+        availablePokemons = GameApp.jugador.getPokemonesCombate();
+        for (Pokemon p : availablePokemons) if(p != null && p.getHpActual() > 0) { selectedPokemon = p; break; }
+        if(npcPokemon == null) npcPokemon = generarPokemonRandom();
+    }
+
+    private Pokemon generarPokemonRandom(){
+        switch ((int) (Math.random() * 4)){
+            case 0:
+                return new Charmander((int) (Math.random()*100));
+            case 1:
+                return new Squirtle((int) (Math.random()*100));
+            case 2:
+                return new Bulbasaur((int) (Math.random()*100));
+            case 3:
+                return new Mimikyu((int) (Math.random()*100));
         }
-        if(npcPokemon==null || npcPokemon.getHpActual()<=0){
-            if(oponentNPC!=null && oponentNPC.getEntrenador()!=null &&
-                    oponentNPC.getEntrenador().getPokemonesCombate()!=null && oponentNPC.getEntrenador().getPokemonesCombate().length>0){
-                Pokemon[] oponentPokemons = oponentNPC.getEntrenador().getPokemonesCombate();
-                for (int i = 0; i < 6; i++) {
-                    Pokemon pokemon = oponentPokemons[i];
-                    if(pokemon!=null && pokemon.getHpActual()>0){
-                        npcPokemon = pokemon;
-                        break;
-                    }
-                }
-            } else {
-                npcPokemon = PokemonManager.generarPokemonSalvaje(this.ruta);
-            }
-        }
+        return null;
     }
 
     private void createPokemonSelector() {
-        VBox selectorLayout = new VBox(5);
-        selectorLayout.setAlignment(Pos.CENTER);
-        selectorLayout.setStyle("-fx-padding: 10px;");
-
-        for (Pokemon pokemon : availablePokemons) {
-            HBox row = new HBox(5);
-            row.setStyle("-fx-border-color: black; -fx-border-width: 2px; -fx-padding: 2px;");
-            row.setPrefHeight(46);
-            row.setMinHeight(46);
-            row.setMaxHeight(46);
-            row.setAlignment(Pos.CENTER_LEFT);
-
-            if(pokemon!=null){
-                URL resource = getClass().getResource(POKEMONS_BACK_PATH + pokemon.getClass().getSimpleName() + "_espalda_G1.png");
-                playerPokemonIV = new ImageView(new Image(resource.toString()));
-                ImageView pokemonImage = new ImageView(new Image(resource.toString()));
-                pokemonImage.setFitWidth(40);
-                pokemonImage.setFitHeight(40);
-
-                VBox nameAndHealth = new VBox(5);
-                Label nameLabel = new Label((pokemon.getApodo()!=null?pokemon.getApodo():pokemon.getClass().getSimpleName()) + " Lv." + pokemon.getNivel());
-                nameLabel.setFont(Font.font("Arial", FontWeight.BOLD, 12));
-                nameLabel.setTextFill(Color.BLACK);
-
-                nameAndHealth.getChildren().addAll(nameLabel);
-
-                addHealthBar(nameAndHealth, pokemon.getHpActual(), pokemon.getMaxHP());
-
-                Label hpLabel = new Label("HP: "+pokemon.getHpActual()+" / "+pokemon.getMaxHP());
-                hpLabel.setFont(Font.font("Arial", 12));
-                hpLabel.setTextFill(Color.BLACK);
-
-                HBox hpContainer = new HBox(hpLabel);
-                hpContainer.setPadding(new Insets(18, 0, 0, 5));
-
-                Button selectButton = new Button("Seleccionar");
-                HBox.setHgrow(selectButton, Priority.ALWAYS);
-                selectButton.setMaxWidth(Double.MAX_VALUE);
-                selectButton.setOnAction(e -> {
-                    boolean pokemonEnemigoAtaca = (selectedPokemon.getHpActual()>0) && (selectedPokemon != pokemon);
-                    selectedPokemon = pokemon;
-                    loadBattleScene(pokemonEnemigoAtaca);
-                });
-
-                HBox buttonContainer = new HBox(selectButton);
-                buttonContainer.setAlignment(Pos.CENTER_RIGHT);
-                buttonContainer.setPrefWidth(100);
-
-                if(pokemon.getHpActual()<=0){
-                    buttonContainer.setVisible(false);
-                }
-
-                row.getChildren().addAll(pokemonImage, nameAndHealth, hpContainer, buttonContainer);
-            }
-
-            selectorLayout.getChildren().add(row);
+        VBox layout = new VBox(5); layout.setAlignment(Pos.CENTER); layout.setPadding(new Insets(10));
+        for (Pokemon p : availablePokemons) {
+            if(p == null) continue;
+            Button b = new Button(p.getNombre() + " Lv." + p.getNivel() + " (HP: " + p.getHpActual() + ")");
+            b.setMaxWidth(Double.MAX_VALUE);
+            b.setOnAction(e -> { selectedPokemon = p; loadBattleScene(true); });
+            layout.getChildren().add(b);
         }
-
-        Scene selectorScene = new Scene(selectorLayout, 480, 320);
-        primaryStage.setScene(selectorScene);
+        Button back = new Button("Volver");
+        back.setOnAction(e -> loadBattleScene(false));
+        layout.getChildren().add(back);
+        primaryStage.setScene(new Scene(layout, 480, 320));
     }
 
-    private VBox crearInfoBox(String nombre, int nivel, int vidaActual, int vidaMaxima, boolean esJugador) {
-        VBox superBox = new VBox();
-
-        HBox pokeballsBox = new HBox(5);
-        pokeballsBox.setAlignment(Pos.CENTER_RIGHT);
-
-        if(esJugador){
-            for (int i = 0; i < availablePokemons.length; i++) {
-                Pokemon pokemon = availablePokemons[i];
-                if(pokemon!=null){
-                    ImageView pokeballIV = new ImageView(new Image(getClass().getResource("/pruebas/pokeball_transparente.png").toExternalForm()));
-                    pokeballIV.setFitWidth(16);
-                    pokeballIV.setFitHeight(16);
-                    pokeballIV.setSmooth(false);
-                    if(pokemon.getHpActual()<=0){
-                        ColorAdjust grayscale = new ColorAdjust();
-                        grayscale.setSaturation(-1);
-                        pokeballIV.setEffect(grayscale);
-                    }
-                    pokeballsBox.getChildren().add(pokeballIV);
-                }
-            }
-        } else {
-            if(oponentNPC!=null && oponentNPC.getEntrenador()!=null &&
-                    oponentNPC.getEntrenador().getPokemonesCombate()!=null && oponentNPC.getEntrenador().getPokemonesCombate().length>0){
-                Pokemon[] oponentPokemons = oponentNPC.getEntrenador().getPokemonesCombate();
-                for (int i = 0; i < oponentPokemons.length; i++) {
-                    Pokemon pokemon = oponentPokemons[i];
-                    if(pokemon!=null){
-                        ImageView pokeballIV = new ImageView(new Image(getClass().getResource("/pruebas/pokeball_transparente.png").toExternalForm()));
-                        pokeballIV.setFitWidth(16);
-                        pokeballIV.setFitHeight(16);
-                        pokeballIV.setSmooth(false);
-                        if(pokemon.getHpActual()<=0){
-                            ColorAdjust grayscale = new ColorAdjust();
-                            grayscale.setSaturation(-1);
-                            pokeballIV.setEffect(grayscale);
-                        }
-                        pokeballsBox.getChildren().add(pokeballIV);
-                    }
-                }
-                pokeballsBox.setAlignment(Pos.CENTER_LEFT);
-            }
-        }
-
-        VBox infoBox = new VBox();
-        infoBox.setStyle("-fx-background-color: white; -fx-border-color: black; -fx-border-width: 2px; -fx-padding: 5px;");
-        infoBox.setPrefSize(210, 50);
-
-        Label nameLabel = new Label(nombre + "  Lv." + nivel);
-        nameLabel.setFont(Font.font("Arial", FontWeight.BOLD, 12));
-        nameLabel.setTextFill(Color.BLACK);
-
-        HBox hpContainer = new HBox();
-        hpContainer.setAlignment(Pos.CENTER);
-        Label hpLabel = new Label("HP: " + vidaActual + " / "+vidaMaxima);
-        hpLabel.setFont(Font.font("Arial", 12));
-        hpLabel.setTextFill(Color.BLACK);
-        hpContainer.getChildren().add(hpLabel);
-
-        infoBox.getChildren().addAll(nameLabel);
-        addHealthBar(infoBox, vidaActual, vidaMaxima);
-        infoBox.getChildren().addAll(hpContainer);
-        superBox.getChildren().addAll(pokeballsBox, infoBox);
-
-        return superBox;
-    }
-
-    private void addHealthBar(VBox infoBox, int currentHP, int maxHP) {
-        HBox barraVida = new HBox();
-        barraVida.setPrefWidth(200);
-        barraVida.setMaxWidth(200);
-        barraVida.setMinWidth(200);
-        barraVida.setPrefHeight(12);
-        barraVida.setMaxHeight(12);
-        barraVida.setMinHeight(12);
-        barraVida.setStyle("-fx-background-color: white; -fx-border-width: 2px; -fx-border-color: black;");
-        Rectangle healthBar = new Rectangle(196, 8);
-        healthBar.setFill(Color.GREEN);
-
-        healthBar.setStrokeWidth(1);
-
-        double healthPercentage = (double) currentHP / maxHP;
-        healthBar.setWidth(196 * healthPercentage);
-
-        barraVida.getChildren().add(healthBar);
-        infoBox.getChildren().add(barraVida);
+    private VBox crearInfoBox(String nombre, int nivel, int vidaA, int vidaM) {
+        VBox info = new VBox(5);
+        info.setStyle("-fx-background-color: white; -fx-border-color: black; -fx-padding: 5px;");
+        info.setPrefWidth(210);
+        Label n = new Label(nombre + " Lv." + nivel);
+        n.setFont(Font.font("Arial", FontWeight.BOLD, 12));
+        Rectangle barra = new Rectangle(196, 10, Color.GREEN);
+        barra.setWidth(196 * ((double)vidaA/vidaM));
+        Label hp = new Label("HP: " + vidaA + " / " + vidaM);
+        info.getChildren().addAll(n, barra, hp);
+        return info;
     }
 }

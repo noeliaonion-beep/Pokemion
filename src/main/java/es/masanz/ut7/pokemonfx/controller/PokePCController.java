@@ -4,312 +4,239 @@ import es.masanz.ut7.pokemonfx.app.GameApp;
 import es.masanz.ut7.pokemonfx.model.base.Ataque;
 import es.masanz.ut7.pokemonfx.model.base.Pokemon;
 import javafx.geometry.Insets;
-import javafx.geometry.Orientation;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
-import javafx.scene.control.*;
+import javafx.scene.control.Button;
+import javafx.scene.control.Label;
+import javafx.scene.control.ScrollPane;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
-import javafx.scene.shape.Rectangle;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.stage.Stage;
 
 import java.net.URL;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
-import static es.masanz.ut7.pokemonfx.util.Configuration.*;
+import static es.masanz.ut7.pokemonfx.util.Configuration.POKEMONS_FRONT_PATH;
 
 public class PokePCController {
 
     private Stage primaryStage;
-    private Scene previousStage;
-    private Pokemon[] equipoPokemon;
-    private List<Pokemon> storagePokemons;
+    private Scene previousScene;
 
-    public void load(Stage primaryStage, Scene previousStage) {
+    public void load(Stage primaryStage, Scene previousScene) {
         this.primaryStage = primaryStage;
-        this.previousStage = previousStage;
-        this.equipoPokemon = GameApp.jugador.getPokemonesCombate();
-        this.storagePokemons = GameApp.jugador.getPokemonesCapturados();
-        createPokemonSelector();
+        this.previousScene = previousScene;
+        showPokemonPC();
     }
 
-    public void volver() {
-        primaryStage.setScene(previousStage);
-    }
+    private void showPokemonPC() {
+        VBox root = new VBox(15);
+        root.setAlignment(Pos.TOP_CENTER);
+        root.setPadding(new Insets(20));
+        root.setStyle("-fx-background-color: #f0f0f0;");
 
-    private void createPokemonSelector() {
-        VBox mainContainer = new VBox(10);
-        mainContainer.setPadding(new Insets(10));
-        mainContainer.setAlignment(Pos.CENTER);
+        Label title = new Label("SISTEMA DE ALMACENAMIENTO POKÉMON");
+        title.setFont(Font.font("Verdana", FontWeight.BOLD, 20));
+        root.getChildren().add(title);
 
-        Button volverButton = new Button("Volver");
-        volverButton.setOnAction(e -> volver());
+        // --- SECCIÓN EQUIPO ---
+        VBox equipoSection = new VBox(5);
+        equipoSection.getChildren().add(new Label("TU EQUIPO (MÁX. 6)"));
+        HBox equipoSlots = new HBox(10);
+        equipoSlots.setAlignment(Pos.CENTER);
+        
+        Pokemon[] equipo = GameApp.jugador.getPokemonesCombate();
+        for (int i = 0; i < 6; i++) {
+            equipoSlots.getChildren().add(createEquipSlot(equipo[i], i));
+        }
+        equipoSection.getChildren().add(equipoSlots);
+        root.getChildren().add(equipoSection);
 
-        HBox mainLayout = new HBox(10);
-        mainLayout.setAlignment(Pos.CENTER);
+        // --- SECCIÓN ALMACÉN ---
+        VBox almacenSection = new VBox(5);
+        almacenSection.getChildren().add(new Label("POKÉMON CAPTURADOS (PC)"));
+        
+        FlowPane almacenGrid = new FlowPane();
+        almacenGrid.setHgap(10);
+        almacenGrid.setVgap(10);
+        almacenGrid.setPadding(new Insets(10));
+        almacenGrid.setAlignment(Pos.TOP_LEFT);
 
-        VBox equipoBox = createPokemonList(Arrays.asList(equipoPokemon), true);
-        VBox storageBox = createPokemonList(storagePokemons, false);
-
-        ScrollPane storageScrollPane = new ScrollPane(storageBox);
-        storageScrollPane.setFitToWidth(true);
-        storageScrollPane.setPrefHeight(380);
-        storageScrollPane.setMinHeight(380);
-        storageScrollPane.setMaxHeight(380);
-
-        mainLayout.getChildren().addAll(equipoBox, storageScrollPane);
-
-        mainContainer.getChildren().addAll(volverButton, mainLayout);
-
-        Scene selectorScene = new Scene(mainContainer, VIEW_WIDTH, VIEW_HEIGHT);
-        primaryStage.setScene(selectorScene);
-        primaryStage.setTitle("PC Pokemon");
-        primaryStage.setResizable(false);
-        primaryStage.show();
-    }
-
-    private VBox createPokemonList(List<Pokemon> pokemons, boolean isEquipo) {
-        VBox listBox = new VBox(5);
-        listBox.setPadding(new Insets(5));
-        listBox.setPrefWidth(320);
-        listBox.setMinWidth(320);
-        listBox.setMaxWidth(320);
-        listBox.setStyle("-fx-border-color: black; -fx-border-width: 2px; -fx-padding: 5px;");
-
-        Label title = new Label(isEquipo ? "Mi Equipo" : "Caja de Pokémon");
-        title.setFont(Font.font("Arial", FontWeight.BOLD, 14));
-        listBox.getChildren().add(title);
-
-        for (Pokemon pokemon : pokemons) {
-            HBox row = createPokemonRow(pokemon, isEquipo);
-            listBox.getChildren().add(row);
+        List<Pokemon> capturados = GameApp.jugador.getPokemonesCapturados();
+        for (Pokemon p : capturados) {
+            almacenGrid.getChildren().add(createAlmacenSlot(p));
         }
 
-        return listBox;
+        ScrollPane scroll = new ScrollPane(almacenGrid);
+        scroll.setFitToWidth(true);
+        scroll.setPrefHeight(250);
+        almacenSection.getChildren().add(scroll);
+        root.getChildren().add(almacenSection);
+
+        Button backButton = new Button("SALIR DEL PC");
+        backButton.setPrefWidth(200);
+        backButton.setOnAction(e -> primaryStage.setScene(previousScene));
+        root.getChildren().add(backButton);
+
+        primaryStage.setScene(new Scene(root, 850, 650));
     }
 
-    private HBox createPokemonRow(Pokemon pokemon, boolean isEquipo) {
-        HBox row = new HBox(5);
-        row.setAlignment(Pos.CENTER_LEFT);
-        row.setPrefHeight(52);
-        row.setMinHeight(52);
-        row.setMaxHeight(52);
-        row.setStyle("-fx-border-color: gray; -fx-border-width: 1px; -fx-padding: 5px;");
+    private VBox createEquipSlot(Pokemon p, int index) {
+        VBox slot = new VBox(5);
+        slot.setAlignment(Pos.CENTER);
+        slot.setPrefSize(110, 130);
+        slot.setStyle("-fx-border-color: #333; -fx-background-color: #fff; -fx-border-radius: 5;");
 
-        if(pokemon!=null){
-            URL resource = getClass().getResource(POKEMONS_BACK_PATH + pokemon.getClass().getSimpleName() + "_espalda_G1.png");
-            ImageView pokemonImage = new ImageView(new Image(resource.toString()));
-            pokemonImage.setFitWidth(40);
-            pokemonImage.setFitHeight(40);
-
-            Label nameLabel = new Label((pokemon.getApodo() != null ? pokemon.getApodo() : pokemon.getClass().getSimpleName())+" Lv."+pokemon.getNivel());
-            nameLabel.setFont(Font.font("Arial", FontWeight.BOLD, 12));
-
-            VBox nameAndHealth = new VBox(5, nameLabel);
-            addHealthBar(nameAndHealth, pokemon.getHpActual(), pokemon.getMaxHP(), 130);
-
-            HBox buttons = createButtons(pokemon, isEquipo);
-
-            row.getChildren().addAll(pokemonImage, nameAndHealth, buttons);
-        }
-
-        return row;
-    }
-
-    private HBox createButtons(Pokemon pokemon, boolean isEquipo) {
-        Button upButton = new Button("↑");
-        Button downButton = new Button("↓");
-        Button actionButton = new Button(isEquipo ? "-" : "+");
-        Button detailsButton = new Button("\uD83D\uDC41");
-
-        upButton.setOnAction(e -> movePokemon(pokemon, -1, isEquipo));
-        downButton.setOnAction(e -> movePokemon(pokemon, 1, isEquipo));
-        actionButton.setOnAction(e -> transferPokemon(pokemon, isEquipo));
-        detailsButton.setOnAction(e -> viewPokemonDetails(pokemon));
-
-        return new HBox(5, upButton, downButton, actionButton, detailsButton);
-    }
-
-    private void movePokemon(Pokemon pokemon, int direction, boolean isEquipo) {
-        if (isEquipo) {
-            int index = Arrays.asList(equipoPokemon).indexOf(pokemon);
-            int newIndex = index + direction;
-            if (newIndex >= 0 && newIndex < equipoPokemon.length) {
-                Pokemon temp = equipoPokemon[index];
-                equipoPokemon[index] = equipoPokemon[newIndex];
-                equipoPokemon[newIndex] = temp;
-                createPokemonSelector();
-            }
+        if (p != null) {
+            slot.getChildren().add(getSmallImageView(p));
+            slot.getChildren().add(new Label(p.getNombre()));
+            
+            Button detailsBtn = new Button("Ver");
+            detailsBtn.setOnAction(e -> showPokemonDetails(p));
+            
+            Button storeBtn = new Button("Guardar");
+            storeBtn.setOnAction(e -> {
+                GameApp.jugador.getPokemonesCapturados().add(p);
+                GameApp.jugador.getPokemonesCombate()[index] = null;
+                showPokemonPC();
+            });
+            
+            HBox btns = new HBox(2, detailsBtn, storeBtn);
+            btns.setAlignment(Pos.CENTER);
+            slot.getChildren().add(btns);
         } else {
-            int index = storagePokemons.indexOf(pokemon);
-            int newIndex = index + direction;
-            if (newIndex >= 0 && newIndex < storagePokemons.size()) {
-                storagePokemons.remove(index);
-                storagePokemons.add(newIndex, pokemon);
-                createPokemonSelector();
-            }
+            Label empty = new Label("VACÍO");
+            empty.setTextFill(Color.GRAY);
+            slot.getChildren().add(empty);
         }
+        return slot;
     }
 
-    private void transferPokemon(Pokemon pokemon, boolean isEquipo) {
-        if (isEquipo) {
-            storagePokemons.add(pokemon);
-            for (int i = 0; i < equipoPokemon.length; i++) {
-                if (equipoPokemon[i] == pokemon) {
-                    equipoPokemon[i] = null;
-                    break;
+    private VBox createAlmacenSlot(Pokemon p) {
+        VBox slot = new VBox(5);
+        slot.setAlignment(Pos.CENTER);
+        slot.setPrefSize(100, 120);
+        slot.setStyle("-fx-border-color: #999; -fx-background-color: #eee; -fx-border-radius: 5;");
+
+        slot.getChildren().add(getSmallImageView(p));
+        slot.getChildren().add(new Label(p.getNombre()));
+
+        Button takeBtn = new Button("Sacar");
+        takeBtn.setOnAction(e -> {
+            Pokemon[] equipo = GameApp.jugador.getPokemonesCombate();
+            for (int i = 0; i < 6; i++) {
+                if (equipo[i] == null) {
+                    equipo[i] = p;
+                    GameApp.jugador.getPokemonesCapturados().remove(p);
+                    showPokemonPC();
+                    return;
                 }
             }
-        } else {
-            if (Arrays.stream(equipoPokemon).filter(p -> p != null).count() < 6) {
-                storagePokemons.remove(pokemon);
-                for (int i = 0; i < equipoPokemon.length; i++) {
-                    if (equipoPokemon[i] == null) {
-                        equipoPokemon[i] = pokemon;
-                        break;
-                    }
-                }
-            }
+            System.out.println("Equipo lleno. Libera o guarda uno primero.");
+        });
+
+        slot.getChildren().add(takeBtn);
+        return slot;
+    }
+
+    private ImageView getSmallImageView(Pokemon p) {
+        URL resource = getClass().getResource(POKEMONS_FRONT_PATH + p.getClass().getSimpleName() + "_RA.png");
+        ImageView iv = new ImageView();
+        if (resource != null) {
+            iv.setImage(new Image(resource.toExternalForm()));
+            iv.setFitWidth(50);
+            iv.setFitHeight(50);
+            iv.setPreserveRatio(true);
         }
-        createPokemonSelector();
+        return iv;
     }
 
-    private void addHealthBar(VBox infoBox, int currentHP, int maxHP, int barWidth) {
-        double healthPercentage = (double) currentHP / maxHP;
-        Rectangle healthBar = new Rectangle((barWidth-2) * healthPercentage, 8);
-        //healthBar.setFill(Color.GREEN);
-        healthBar.setFill(healthPercentage > 0.5 ? Color.LIMEGREEN : healthPercentage > 0.2 ? Color.ORANGE : Color.RED);
+    private void showPokemonDetails(Pokemon pokemon) {
+        VBox detailsLayout = new VBox(10);
+        detailsLayout.setAlignment(Pos.CENTER);
+        detailsLayout.setPadding(new Insets(20));
+        detailsLayout.setStyle("-fx-background-color: #e0e0e0;");
 
-        HBox healthContainer = new HBox(healthBar);
-        healthContainer.setPrefSize(barWidth, 10);
-        healthContainer.setStyle("-fx-background-color: white; -fx-border-color: black; -fx-border-width: 1px;");
-        healthContainer.setPrefWidth(barWidth);
-        healthContainer.setMaxWidth(barWidth);
-        healthContainer.setMinWidth(barWidth);
-        healthContainer.setPrefHeight(10);
-        healthContainer.setMaxHeight(10);
-        healthContainer.setMinHeight(10);
-
-        infoBox.getChildren().add(healthContainer);
-    }
-
-    private void viewPokemonDetails(Pokemon pokemon) {
-        VBox mainContainer = new VBox(10);
-        mainContainer.setPadding(new Insets(10));
-        mainContainer.setAlignment(Pos.CENTER);
-
-        Button volverButton = new Button("Volver");
-        volverButton.setOnAction(e -> createPokemonSelector());
+        Label nameLabel = new Label(pokemon.getNombre() + " (Lv." + pokemon.getNivel() + ")");
+        nameLabel.setFont(Font.font("Arial", FontWeight.BOLD, 20));
+        detailsLayout.getChildren().add(nameLabel);
 
         URL resource = getClass().getResource(POKEMONS_FRONT_PATH + pokemon.getClass().getSimpleName() + "_RA.png");
-        ImageView pokemonImage = new ImageView(new Image(resource.toString()));
-        pokemonImage.setFitWidth(120);
-        pokemonImage.setFitHeight(120);
-
-        Label numPokedexLabel = new Label("Nº "+pokemon.getNumPokedex());
-        VBox seccionImagen = new VBox(10, pokemonImage, numPokedexLabel);
-        seccionImagen.setAlignment(Pos.BOTTOM_CENTER);
-
-        String nombre = pokemon.getClass().getSimpleName();
-        if(pokemon.getApodo()!=null){
-            nombre = pokemon.getApodo() + " ("+nombre+")";
+        ImageView pokemonImage = new ImageView();
+        if (resource != null) {
+            pokemonImage.setImage(new Image(resource.toExternalForm()));
+            pokemonImage.setFitWidth(100);
+            pokemonImage.setFitHeight(100);
+            pokemonImage.setPreserveRatio(true);
         }
-        Label nameLabel = new Label(nombre + "  Lv." + pokemon.getNivel());
-        nameLabel.setFont(Font.font("Arial", FontWeight.BOLD, 16));
-
-        VBox healthBarContainer = new VBox();
-        addHealthBar(healthBarContainer, pokemon.getHpActual(), pokemon.getMaxHP(), 200);
-
-        Label hpLabel = new Label("HP: "+pokemon.getHpActual() + "/" + pokemon.getMaxHP());
-
-        Label expLabel = new Label("XP: "+pokemon.getPuntosExp() + "/" + pokemon.experienciaNecesariaParaSubirNivel());
+        detailsLayout.getChildren().add(pokemonImage);
 
         GridPane statsGrid = new GridPane();
         statsGrid.setHgap(10);
         statsGrid.setVgap(5);
-        statsGrid.add(new Label("Ataque:"), 0, 0);
-        statsGrid.add(new Label(String.valueOf(pokemon.getAtaque())), 1, 0);
-        statsGrid.add(new Label("Defensa:"), 2, 0);
-        statsGrid.add(new Label(String.valueOf(pokemon.getDefensa())), 3, 0);
-        statsGrid.add(new Label("Ataque Esp.:"), 0, 1);
-        statsGrid.add(new Label(String.valueOf(pokemon.getAtaqueEspecial())), 1, 1);
-        statsGrid.add(new Label("Defensa Esp.:"), 2, 1);
-        statsGrid.add(new Label(String.valueOf(pokemon.getDefensaEspecial())), 3, 1);
-        statsGrid.add(new Label("Velocidad:"), 0, 2);
-        statsGrid.add(new Label(String.valueOf(pokemon.getVelocidad())), 1, 2);
+        statsGrid.setAlignment(Pos.CENTER);
 
-        VBox statsBox = new VBox(5, nameLabel, healthBarContainer, hpLabel, expLabel, statsGrid);
-        statsBox.setAlignment(Pos.CENTER_LEFT);
-        HBox firstRow = new HBox(20, seccionImagen, new Separator(Orientation.VERTICAL), statsBox);
-        firstRow.setAlignment(Pos.CENTER);
+        statsGrid.add(new Label("HP:"), 0, 0);
+        statsGrid.add(new Label(pokemon.getHpActual() + "/" + pokemon.getMaxHP()), 1, 0);
+        statsGrid.add(new Label("Ataque:"), 0, 1);
+        statsGrid.add(new Label(String.valueOf(pokemon.getAtaque())), 1, 1);
+        statsGrid.add(new Label("Defensa:"), 0, 2);
+        statsGrid.add(new Label(String.valueOf(pokemon.getDefensa())), 1, 2);
+        statsGrid.add(new Label("Velocidad:"), 0, 3);
+        statsGrid.add(new Label(String.valueOf(pokemon.getVelocidad())), 1, 3);
+        statsGrid.add(new Label("Nº Pokedex:"), 0, 4);
+        statsGrid.add(new Label(pokemon.getNumPokedex()), 1, 4);
+        statsGrid.add(new Label("Experiencia:"), 0, 5);
+        statsGrid.add(new Label(pokemon.getPuntosExp() + "/" + pokemon.experienciaNecesariaParaSubirNivel()), 1, 5);
 
-        Separator separator = new Separator(Orientation.HORIZONTAL);
-        separator.setPrefWidth(300);
+        detailsLayout.getChildren().add(statsGrid);
+
+        Label attacksTitle = new Label("Ataques:");
+        attacksTitle.setFont(Font.font("Arial", FontWeight.BOLD, 16));
+        detailsLayout.getChildren().add(attacksTitle);
 
         VBox attacksBox = new VBox(5);
         attacksBox.setAlignment(Pos.CENTER);
-        Label attacksLabel = new Label("Ataques:");
-        attacksLabel.setFont(Font.font("Arial", FontWeight.BOLD, 14));
+        for (Map.Entry<String, Ataque> entry : pokemon.getAtaques().entrySet()) {
+            Ataque ataque = entry.getValue();
+            HBox attackRow = new HBox(10);
+            attackRow.setAlignment(Pos.CENTER_LEFT);
+            attackRow.setPadding(new Insets(5));
+            attackRow.setStyle("-fx-border-color: lightgray; -fx-border-width: 1px; -fx-background-color: #f9f9f9;");
 
-        GridPane attacksGrid = new GridPane();
-        attacksGrid.setAlignment(Pos.CENTER);
-        attacksGrid.setHgap(15);
-        attacksGrid.setVgap(5);
-        int row = 0, col = 0;
+            Label attackName = new Label(ataque.getNombre());
+            attackName.setPrefWidth(100);
+            Label attackType = new Label("Tipo: " + ataque.getTipo().name());
+            Label attackDmg = new Label("Daño: " + ataque.getDmgBase());
+            Label attackAcc = new Label("Precisión: " + ataque.getPrecision());
+            Label attackSpecial = new Label("Especial: " + (ataque.isEsEspecial() ? "Sí" : "No"));
+            Label attackPP = new Label("PP: " + ataque.getCantidad() + "/" + ataque.getPp());
 
-        if (pokemon.getAtaques() != null && !pokemon.getAtaques().isEmpty()) {
-
-            for (Ataque ataque : pokemon.getAtaques().values()) {
-                VBox ataqueBox = new VBox(3);
-                ataqueBox.setStyle("-fx-border-color: black; -fx-padding: 5px;");
-                ataqueBox.setAlignment(Pos.CENTER);
-
-                Label nombreAtaque = new Label(ataque.getNombre());
-                nombreAtaque.setFont(Font.font("Arial", FontWeight.BOLD, 12));
-
-                GridPane atackGrid = new GridPane();
-                atackGrid.setHgap(10);
-                atackGrid.setVgap(5);
-                atackGrid.add(new Label("Tipo:"), 0, 0);
-                atackGrid.add(new Label(String.valueOf(ataque.getTipo())), 1, 0);
-                atackGrid.add(new Label("Daño:"), 0, 1);
-                atackGrid.add(new Label(String.valueOf(ataque.getDmgBase())), 1, 1);
-                atackGrid.add(new Label("Precisión:"), 0, 2);
-                atackGrid.add(new Label(String.valueOf(ataque.getPrecision())), 1, 2);
-                atackGrid.add(new Label("Es especial:"), 0, 3);
-                atackGrid.add(new Label(ataque.isEsEspecial()?"Si":"No"), 1, 3);
-                atackGrid.add(new Label("PP:"), 0, 4);
-                atackGrid.add(new Label(ataque.getCantidad()+"/"+ataque.getPp()), 1, 4);
-
-                ataqueBox.getChildren().addAll(nombreAtaque, atackGrid);
-
-                attacksGrid.add(ataqueBox, col, row);
-                col++;
-                if (col == 4) {
-                    col = 0;
-                    row++;
-                }
-            }
-        } else {
-            attacksGrid.add(new Label("Este Pokémon no tiene ataques."), 0, 0);
+            attackRow.getChildren().addAll(attackName, attackType, attackDmg, attackAcc, attackSpecial, attackPP);
+            attacksBox.getChildren().add(attackRow);
         }
+        detailsLayout.getChildren().add(attacksBox);
 
-        attacksBox.getChildren().addAll(attacksLabel, attacksGrid);
+        Button backButton = new Button("Volver");
+        backButton.setOnAction(e -> showPokemonPC());
+        detailsLayout.getChildren().add(backButton);
 
-        mainContainer.getChildren().addAll(volverButton, firstRow, separator, attacksBox);
-
-        Scene detailsScene = new Scene(mainContainer, VIEW_WIDTH, VIEW_HEIGHT);
-        primaryStage.setScene(detailsScene);
-        primaryStage.setTitle("Detalles de " + (pokemon.getApodo() != null ? pokemon.getApodo() : pokemon.getClass().getSimpleName()));
-        primaryStage.setResizable(false);
-        primaryStage.show();
+        primaryStage.setScene(new Scene(detailsLayout, 850, 650));
     }
 
-
-
+    private void releasePokemon(Pokemon pokemon, int index) {
+        if (Arrays.stream(GameApp.jugador.getPokemonesCombate()).filter(p -> p != null).count() > 1) {
+            GameApp.jugador.getPokemonesCombate()[index] = null;
+            showPokemonPC();
+        } else {
+            System.out.println("No puedes liberar a tu último Pokémon!");
+        }
+    }
 }
