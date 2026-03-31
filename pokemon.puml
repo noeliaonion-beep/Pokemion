@@ -1,0 +1,73 @@
+@startuml
+class GameApp {
+}
+class Ataque {
+}
+class NPC {
+}
+
+class MapController {
+}
+
+class MapManager {
+}
+class Ruta2 {
+}
+class PokePCController {
+}
+interface Agua {
+}
+abstract class Mapa {
+}
+class Ruta1 {
+}
+class CombateController {
+}
+interface Evento {
+}
+class PokemonManager {
+}
+
+interface Fuego {
+}
+class Charmander {
+}
+interface Planta {
+}
+class Entrenador {
+}
+
+class Bulbasaur {
+}
+class Squirtle {
+}
+abstract class Pokemon {
+}
+
+class EventoEjemplo {
+}
+
+
+Application <|-- GameApp
+GameApp o--> MapController
+MapManager <-o MapController
+MapManager <--o PokemonManager
+MapController o-> CombateController
+MapController o--> PokePCController
+Mapa <-o MapManager
+Mapa <|--L Ruta2
+Mapa <|--L Ruta1
+Fuego <|..U Charmander
+Pokemon <|-- Charmander
+Planta <|..U Bulbasaur
+Pokemon <|-- Bulbasaur
+Agua <|..U Squirtle
+Pokemon <|-- Squirtle
+Evento <|..U EventoEjemplo
+Pokemon o-> Ataque
+NPC o--> Entrenador
+Entrenador o--> Pokemon
+Mapa o-> Pokemon
+Mapa o-> NPC
+Mapa o-u-> Evento
+@enduml
